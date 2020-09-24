@@ -191,18 +191,18 @@ class App
         this._scene.detachControl();
         let scene = this._gameScene;
 
-        // Load XR stuff
-        const xrHelper = await this._scene.createDefaultXRExperienceAsync({ disableTeleportation: true });
+        // // Load XR stuff
+        // const xrHelper = await this._scene.createDefaultXRExperienceAsync({ disableTeleportation: true });
 
 
         // Camera stuff ###########################################################
         // ########################################################################
 
-        const xrCamera = xrHelper.baseExperience.camera;
+        // const xrCamera = xrHelper.baseExperience.camera;
 
-        xrCamera.name = "XR Camera";
-        xrCamera.applyGravity = true;
-        xrCamera.checkCollisions = true;
+        // xrCamera.name = "XR Camera";
+        // xrCamera.applyGravity = true;
+        // xrCamera.checkCollisions = true;
 
         // This creates and positions a first-person camera (non-mesh)
         var camera = new FreeCamera("camera1", new Vector3(0, 3, -10), scene);
@@ -344,11 +344,11 @@ class App
 
 
         
-        // FOR THE LOVE OF GOD, FIGURE OUT WHY XRCAMERA.ELLIPSOID CANNOT .INTERSECTSMESH?????!!!!
-        var xrCameraCollider = MeshBuilder.CreateCylinder("Camera Collider", { height: 2, diameter: 1, }, scene );
-        xrCameraCollider.visibility = 0;
-        xrCameraCollider.checkCollisions = true;
-        xrCameraCollider.position = xrCamera.position;
+        // // FOR THE LOVE OF GOD, FIGURE OUT WHY XRCAMERA.ELLIPSOID CANNOT .INTERSECTSMESH?????!!!!
+        // var xrCameraCollider = MeshBuilder.CreateCylinder("Camera Collider", { height: 2, diameter: 1, }, scene );
+        // xrCameraCollider.visibility = 0;
+        // xrCameraCollider.checkCollisions = true;
+        // xrCameraCollider.position = xrCamera.position;
 
 
         // a bunch of temporary stuff please clean me up

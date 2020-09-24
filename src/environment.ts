@@ -1,4 +1,4 @@
-import { MeshBuilder, Scene } from "@babylonjs/core";
+import { MeshBuilder, Scene, StandardMaterial, Texture } from "@babylonjs/core";
 import { Vector3 } from "@babylonjs/core/Maths/math";
 
 
@@ -20,6 +20,11 @@ export class Environment
         xrCamera.name = "XR Camera";
         xrCamera.applyGravity = true;
         xrCamera.checkCollisions = true;
+
+        // load textures
+        var wallTexture = new Texture("textures/brick.png", this._scene);
+        wallTexture.uScale = 25;
+        wallTexture.vScale = 1;
 
         // // Ground stuff ###########################################################
         // // ########################################################################
@@ -49,10 +54,14 @@ export class Environment
         var leftWall = MeshBuilder.CreateBox("left wall", { width: 15, height: 3, depth: 0.3 }, this._scene);
         leftWall.checkCollisions = true;
         leftWall.rotation.y = Math.PI / 2;
-        leftWall.position = new Vector3(-3, 1.5, 4);
+        leftWall.position = new Vector3(-2, 1.5, 4);
+        var wallMaterial = new StandardMaterial("", this._scene);
+        wallMaterial.diffuseTexture = wallTexture;
+        leftWall.material = wallMaterial;
+        
 
         var rightWall = leftWall.clone();
         rightWall.name = "right wall";
-        rightWall.position.x = 3;
+        rightWall.position.x = 2;
     }
 }

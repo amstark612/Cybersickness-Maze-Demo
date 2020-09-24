@@ -20,5 +20,8 @@
     "webpack-cli": "^3.3.12",
     "webpack-dev-server": "^3.11.0"
   },
-  "dependencies": {}
+  "dependencies": {
+    "@types/earcut": "^2.1.1",
+    "earcut": "^2.2.2"
+  }
 }
