@@ -1,10 +1,11 @@
-import { MeshBuilder, Scene, StandardMaterial, Texture } from "@babylonjs/core";
-import { Vector3 } from "@babylonjs/core/Maths/math";
+import { HemisphericLight, Mesh, MeshBuilder, Scene, StandardMaterial, Texture, WebXRDefaultExperience } from "@babylonjs/core";
+import { Color3, Vector3 } from "@babylonjs/core/Maths/math";
 
 
 export class Environment
 {
     private _scene: Scene;
+    public xrHelper: WebXRDefaultExperience;
 
     constructor(scene: Scene)
     {
@@ -13,21 +14,52 @@ export class Environment
 
     public async load()
     {
-        const xrHelper = await this._scene.createDefaultXRExperienceAsync({ disableTeleportation: true });
+        // XR & camera stuff ######################################################
+        // ########################################################################
+        this.xrHelper = await this._scene.createDefaultXRExperienceAsync({ disableTeleportation: true });
 
-        const xrCamera = xrHelper.baseExperience.camera;
+        const xrCamera = this.xrHelper.input.xrCamera;
 
         xrCamera.name = "XR Camera";
         xrCamera.applyGravity = true;
         xrCamera.checkCollisions = true;
 
+
+        // Assets stuff ###########################################################
+        // ########################################################################
+
         // load textures
         var wallTexture = new Texture("textures/brick.png", this._scene);
-        wallTexture.uScale = 25;
+        wallTexture.uScale = 5;
         wallTexture.vScale = 1;
 
-        // // Ground stuff ###########################################################
-        // // ########################################################################
+        // Lights #################################################################
+        // ########################################################################
+
+        // This creates a light, aiming 0,1,0 - to the sky (non-mesh)
+        var light = new HemisphericLight("light", new Vector3(0, 1, 0), this._scene);
+
+        // Default intensity is 1. Let's dim the light a small amount
+        light.intensity = 0.7;
+
+        // Physics ################################################################
+        // ########################################################################
+
+        // Create gravity
+        this._scene.gravity = new Vector3(0, -9.81, 0);
+
+        // Enable collisions
+        this._scene.collisionsEnabled = true;
+
+        // Objects ################################################################
+        // ########################################################################
+
+        // Create a default skybox
+        const environment = this._scene.createDefaultEnvironment({
+            createGround: false,
+            skyboxSize: 250,
+            skyboxColor: new Color3(0.059, 0.663, 0.80)
+        });
         
         // Our built-in 'ground' shape.
         var ground = MeshBuilder.CreateGround("ground", { width: 25, height: 25 }, this._scene);

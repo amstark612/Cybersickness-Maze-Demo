@@ -1,11 +1,11 @@
 import "@babylonjs/core/Debug/debugLayer";
 import "@babylonjs/inspector";
 import "@babylonjs/loaders/glTF";
-import { Color4, Engine, FreeCamera, HemisphericLight, MeshBuilder, Scene } from "@babylonjs/core";
+import { Camera, Color4, Engine, FreeCamera, HemisphericLight, MeshBuilder, Scene, WebXRCamera } from "@babylonjs/core";
 import { ActionManager, ExecuteCodeAction } from "@babylonjs/core";
 import { Vector3 } from "@babylonjs/core/Maths/math";
-import { AdvancedDynamicTexture } from "@babylonjs/gui/2D"
-import { Button, Rectangle, Control, TextBlock, Slider, StackPanel } from "@babylonjs/gui/2D/controls"
+import { AdvancedDynamicTexture } from "@babylonjs/gui/2D";
+import { Button, Rectangle, Control, TextBlock, Slider, StackPanel } from "@babylonjs/gui/2D/controls";
 import { Environment } from "./environment";
 
 enum State { START = 0, GAME = 1, END = 2, LOADSCENE = 3 }
@@ -24,6 +24,9 @@ class App
 
     // game state stuff
     private _environment;
+    private _xrCamera: WebXRCamera;
+    private _xrCameraCollider;
+
 
     constructor()
     {
@@ -56,6 +59,7 @@ class App
                     break;
                 case State.GAME:
                     this._scene.render();
+                    this._xrCameraCollider.position = this._xrCamera.position;
                     break;
                 case State.END:
                     this._scene.render();
@@ -80,7 +84,9 @@ class App
         // create environment
         const environment = new Environment(scene);
         this._environment = environment;
-        await this._environment.load();
+        await this._environment.load().then(res => {
+                this._xrCamera = this._environment.xrHelper.input.xrCamera;
+        });
     }
 
     private async _goToStart()
@@ -178,8 +184,7 @@ class App
 
         // start loading and setting up game during this scene
         var finishedLoading = false;
-        await this._setUpGame().then(res =>
-            {
+        await this._setUpGame().then(res => {
                 finishedLoading = true;
         });
 
@@ -191,21 +196,15 @@ class App
         this._scene.detachControl();
         let scene = this._gameScene;
 
-        // // Load XR stuff
-        // const xrHelper = await this._scene.createDefaultXRExperienceAsync({ disableTeleportation: true });
+        // // load XR helper
+        // this.xrHelper = await this._scene.createDefaultXRExperienceAsync({ disableTeleportation: true });
 
 
-        // Camera stuff ###########################################################
-        // ########################################################################
-
-        // const xrCamera = xrHelper.baseExperience.camera;
-
-        // xrCamera.name = "XR Camera";
-        // xrCamera.applyGravity = true;
-        // xrCamera.checkCollisions = true;
-
-        // This creates and positions a first-person camera (non-mesh)
+        // This creates and positions a first-person non-VR camera (non-mesh)
         var camera = new FreeCamera("camera1", new Vector3(0, 3, -10), scene);
+        
+        // Set non-VR camera view to VR camera's view
+        camera.fov = 90 * Math.PI / 180;
 
         // This targets the camera to scene origin
         camera.setTarget(Vector3.Zero());
@@ -222,21 +221,11 @@ class App
         // Enable collisions on user
         camera.checkCollisions = true;
 
-        // ########################################################################        
-        // ########################################################################
-
-
-        // This creates a light, aiming 0,1,0 - to the sky (non-mesh)
-        var light = new HemisphericLight("light", new Vector3(0, 1, 0), scene);
-
-        // Default intensity is 1. Let's dim the light a small amount
-        light.intensity = 0.7;
-
-        // Create gravity
-        scene.gravity = new Vector3(0, -9.81, 0);
-
-        // Enable collisions
-        scene.collisionsEnabled = true;
+        // create ellipsoid for VR player collisions
+        this._xrCameraCollider = MeshBuilder.CreateSphere("player", { diameterX: 0.75, diameterY: 2, diameterZ: 0.75 });
+        this._xrCameraCollider.visibility = 0;
+        this._xrCameraCollider.checkCollisions = true;
+        this._xrCameraCollider.position = this._xrCamera.position;
 
         
 
@@ -343,12 +332,7 @@ class App
 
 
 
-        
-        // // FOR THE LOVE OF GOD, FIGURE OUT WHY XRCAMERA.ELLIPSOID CANNOT .INTERSECTSMESH?????!!!!
-        // var xrCameraCollider = MeshBuilder.CreateCylinder("Camera Collider", { height: 2, diameter: 1, }, scene );
-        // xrCameraCollider.visibility = 0;
-        // xrCameraCollider.checkCollisions = true;
-        // xrCameraCollider.position = xrCamera.position;
+
 
 
         // a bunch of temporary stuff please clean me up
@@ -364,22 +348,11 @@ class App
         sphere.actionManager = new ActionManager(scene);
         sphere.actionManager.registerAction(
             new ExecuteCodeAction(
-                ActionManager.OnPickTrigger, () => 
                 { 
-                    if (!rect1.isVisible)
-                    {
-                        rect1.isVisible = true;
-                    }
-                    else
-                    {
-                        rect1.isVisible = false;
-                    }
-                }
-                // { 
-                //     trigger: ActionManager.OnIntersectionEnterTrigger,
-                //     parameter: { mesh: xrCameraCollider }
-                // },
-                // () => { console.log("You intersected me?"); }
+                    trigger: ActionManager.OnIntersectionEnterTrigger,
+                    parameter: { mesh: this._xrCameraCollider }
+                },
+                () => { rect1.isVisible = true; }
             )
         );
 
@@ -437,4 +410,4 @@ class App
     }
 }
 
-new App();
+var game = new App();

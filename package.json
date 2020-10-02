@@ -2,23 +2,29 @@
   "name": "babylon",
   "version": "1.0.0",
   "description": "",
-  "main": "index.js",
+  "main": "index.ts",
   "scripts": {
-    "build": "webpack",
-    "start": "webpack-dev-server --port 8081"
+    "start": "npx webpack-dev-server --config webpack.config-dev.js",
+    "build": "npx webpack --config webpack.config-prod.js",
+    "lint": "npx eslint . --ext .ts,.tsx"
   },
   "author": "",
   "license": "ISC",
   "devDependencies": {
     "@babylonjs/core": "^4.1.0",
     "@babylonjs/inspector": "^4.1.0",
+    "@babylonjs/materials": "^4.1",
+    "@typescript-eslint/eslint-plugin": "^2.30.0",
+    "@typescript-eslint/parser": "^2.30.0",
     "clean-webpack-plugin": "^3.0.0",
     "html-webpack-plugin": "^4.5.0",
+    "source-map-loader": "^0.2.4",
     "ts-loader": "^8.0.4",
     "typescript": "^4.0.3",
     "webpack": "^4.44.2",
     "webpack-cli": "^3.3.12",
-    "webpack-dev-server": "^3.11.0"
+    "webpack-dev-server": "^3.11.0",
+    "webpack-merge": "^4.2.2"
   },
   "dependencies": {
     "@types/earcut": "^2.1.1",
