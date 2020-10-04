@@ -14,15 +14,15 @@ export class Environment
 
     public async load()
     {
-        // XR & camera stuff ######################################################
-        // ########################################################################
-        this.xrHelper = await this._scene.createDefaultXRExperienceAsync({ disableTeleportation: true });
+        // // XR & camera stuff ######################################################
+        // // ########################################################################
+        // this.xrHelper = await this._scene.createDefaultXRExperienceAsync({ disableTeleportation: true });
 
-        const xrCamera = this.xrHelper.input.xrCamera;
+        // const xrCamera = this.xrHelper.input.xrCamera;
 
-        xrCamera.name = "XR Camera";
-        xrCamera.applyGravity = true;
-        xrCamera.checkCollisions = true;
+        // xrCamera.name = "XR Camera";
+        // xrCamera.applyGravity = true;
+        // xrCamera.checkCollisions = true;
 
 
         // Assets stuff ###########################################################

@@ -1,14 +1,18 @@
+import { Color4, Engine, FreeCamera, HemisphericLight, Mesh, MeshBuilder, Scene, WebXRCamera } from "@babylonjs/core";
+import { ActionManager, ExecuteCodeAction } from "@babylonjs/core";
+import { Vector3 } from "@babylonjs/core/Maths/math";
+
+// custom classes
+import { Environment } from "./environment";
+import { PlayerController } from "./playerController";
+import { UI } from "./UI";
+
+// side effects
 import "@babylonjs/core/Debug/debugLayer";
 import "@babylonjs/inspector";
 import "@babylonjs/loaders/glTF";
-import { Camera, Color4, Engine, FreeCamera, HemisphericLight, MeshBuilder, Scene, WebXRCamera } from "@babylonjs/core";
-import { ActionManager, ExecuteCodeAction } from "@babylonjs/core";
-import { Vector3 } from "@babylonjs/core/Maths/math";
-import { AdvancedDynamicTexture } from "@babylonjs/gui/2D";
-import { Button, Rectangle, Control, TextBlock, Slider, StackPanel } from "@babylonjs/gui/2D/controls";
-import { Environment } from "./environment";
 
-enum State { START = 0, GAME = 1, END = 2, LOADSCENE = 3 }
+enum State { START = 0, PRETEST = 1, MAIN = 2, POSTTEST = 3 }
 
 class App
 {
@@ -19,14 +23,14 @@ class App
 
     // scene stuff
     private _state: number = 0;
-    private _gameScene: Scene;
-    private _loadScene: Scene;
+    private _mainScene: Scene;
+    private _pretestScene: Scene;
 
     // game state stuff
-    private _environment;
-    private _xrCamera: WebXRCamera;
-    private _xrCameraCollider;
-
+    private _environment: Environment;
+    private _playerController: PlayerController;
+    private _player: WebXRCamera;
+    private _playerCollider: Mesh;
 
     constructor()
     {
@@ -34,9 +38,6 @@ class App
         this._canvas = document.getElementById("renderCanvas") as HTMLCanvasElement;
         this._engine = new Engine(this._canvas, true);
         this._scene = new Scene(this._engine);
-
-        // show inspector
-        this._scene.debugLayer.show();
 
         // call main render loop & state machine
         this._main();
@@ -54,14 +55,16 @@ class App
                 case State.START:
                     this._scene.render();
                     break;
-                case State.LOADSCENE:
+                case State.PRETEST:
                     this._scene.render();
                     break;
-                case State.GAME:
+                case State.MAIN:
                     this._scene.render();
-                    this._xrCameraCollider.position = this._xrCamera.position;
+
+                    // is lerping really necessary for an invisible collider???? maybe not?
+                    this._playerCollider.position = Vector3.Lerp(this._playerCollider.position, this._player.position, 0.4);
                     break;
-                case State.END:
+                case State.POSTTEST:
                     this._scene.render();
                     break;
                 default: break;
@@ -75,61 +78,59 @@ class App
         });
     }
 
-    private async _setUpGame()
+    private async _setUpGame() : Promise<void>
     {
         // create scene
-        let scene = new Scene(this._engine);
-        this._gameScene = scene;
+        const scene = new Scene(this._engine);
+        this._mainScene = scene;
 
         // create environment
-        const environment = new Environment(scene);
-        this._environment = environment;
-        await this._environment.load().then(res => {
-                this._xrCamera = this._environment.xrHelper.input.xrCamera;
+        this._environment = new Environment(scene);
+        await this._environment.load().then(res => 
+            {
+                // set up (backup) non-VR camera & collider
+                this._playerController = new PlayerController(scene, this._canvas);
         });
+
+        // set up XR camera & collider
+        await this._playerController.loadXR().then(res => 
+            {
+                this._player = this._playerController.xrHelper.input.xrCamera;
+                this._playerCollider = this._playerController.createXRCollider();
+                this._playerCollider.position = this._player.position;
+        })
+
     }
 
-    private async _goToStart()
+    private async _goToStart() : Promise<void>
     {
         // display loading screen while loading
         this._engine.displayLoadingUI();
 
+
         // create scene and camera
         this._scene.detachControl();
-        let scene = new Scene(this._engine);
+        const scene = new Scene(this._engine);
         //scene.clearColor = new Color4(0, 0, 0, 1);
-        let camera = new FreeCamera("camera1", Vector3.Zero(), scene);
+        const camera = new FreeCamera("camera1", Vector3.Zero(), scene);
         camera.setTarget(Vector3.Zero());
 
 
-        // GUI ################################################################
         // create fullscreen UI for GUI elements
-        const guiMenu = AdvancedDynamicTexture.CreateFullscreenUI("UI");
-        guiMenu.idealHeight = 720;
+        const guiMenu = new UI("UI");
 
-        // display instructions
-        var textBox = new TextBlock("Text Box");
-        textBox.text = "Some lorem ipsum and stuff";
-        textBox.color = "black";
-        textBox.fontSize = 48;
-        guiMenu.addControl(textBox);
-        textBox.isVisible = true;
+        // print instructions
+        guiMenu.createMsg("Some intructions and lorem ipsum and stuff");
 
         // create a button
-        const startBtn = Button.CreateSimpleButton("start", "BEGIN");
-        startBtn.width = 0.2;
-        startBtn.height = "80px";
-        startBtn.color = "white";
-        startBtn.top = "-14px";
-        startBtn.thickness = 0;
-        startBtn.verticalAlignment = Control.VERTICAL_ALIGNMENT_BOTTOM;
-        guiMenu.addControl(startBtn);
+        const startBtn = guiMenu.createBtn("NEXT");
 
         startBtn.onPointerDownObservable.add(() =>
         {
-            this._goToLoadScene();
+            this._goToPretest();
             scene.detachControl();
         })
+
 
         // after scene loads
         await scene.whenReadyAsync();
@@ -141,188 +142,78 @@ class App
         this._state = State.START;
     }
 
-    private async _goToLoadScene() : Promise<void>
+    private async _goToPretest() : Promise<void>
     {
         // display loading screen while loading
         this._engine.displayLoadingUI();
 
         // create scene and camera
         this._scene.detachControl();
-        this._loadScene = new Scene(this._engine);
-        this._loadScene.clearColor = new Color4(0, 0, 0, 1);
-        let camera = new FreeCamera("camera1", Vector3.Zero(), this._loadScene);
+        this._pretestScene = new Scene(this._engine);
+        // this._loadScene.clearColor = new Color4(0, 0, 0, 1);
+        const camera = new FreeCamera("camera1", Vector3.Zero(), this._pretestScene);
         camera.setTarget(Vector3.Zero());
 
-        // GUI ################################################################
+
         // create fullscreen UI for GUI elements
-        const loadScene = AdvancedDynamicTexture.CreateFullscreenUI("loadScene");
-        loadScene.idealHeight = 720;
+        const loadingUI = new UI("Pretest UI");
+
+        // create prettest questionnaire
+        loadingUI.createSSQ();
 
         // create a button
-        const nextBtn = Button.CreateSimpleButton("next", "NEXT");
-        nextBtn.width = 0.2;
-        nextBtn.height = "40px";
-        nextBtn.color = "white";
-        nextBtn.top = "-14px";
-        nextBtn.thickness = 0;
-        nextBtn.verticalAlignment = Control.VERTICAL_ALIGNMENT_BOTTOM;
-        loadScene.addControl(nextBtn);
+        const nextBtn = loadingUI.createBtn("NEXT");
 
         nextBtn.onPointerDownObservable.add(() =>
         {
             this._goToGame();
         })
 
+
         // after scene loads
-        await this._loadScene.whenReadyAsync();
+        await this._pretestScene.whenReadyAsync();
         this._engine.hideLoadingUI();
 
         // set current state to start state
         this._scene.dispose();
-        this._scene = this._loadScene;
-        this._state = State.LOADSCENE;
+        this._scene = this._pretestScene;
+        this._state = State.PRETEST;
 
         // start loading and setting up game during this scene
-        var finishedLoading = false;
+        let finishedLoading = false;
         await this._setUpGame().then(res => {
-                finishedLoading = true;
+            finishedLoading = true;
         });
 
+        this._scene.debugLayer.show();
     }
 
     private async _goToGame()
     {
         // set up scene
         this._scene.detachControl();
-        let scene = this._gameScene;
+        const scene = this._mainScene;
 
-        // // load XR helper
-        // this.xrHelper = await this._scene.createDefaultXRExperienceAsync({ disableTeleportation: true });
-
-
-        // This creates and positions a first-person non-VR camera (non-mesh)
-        var camera = new FreeCamera("camera1", new Vector3(0, 3, -10), scene);
-        
-        // Set non-VR camera view to VR camera's view
-        camera.fov = 90 * Math.PI / 180;
-
-        // This targets the camera to scene origin
-        camera.setTarget(Vector3.Zero());
-
-        // Apply gravity to camera
-        camera.applyGravity = true;
-
-        // This attaches the camera to the canvas
-        camera.attachControl(this._canvas, true);
-
-        // Set ellipsoid around camera to represent user
-        camera.ellipsoid = new Vector3(1, 1, 1);
-
-        // Enable collisions on user
-        camera.checkCollisions = true;
-
-        // create ellipsoid for VR player collisions
-        this._xrCameraCollider = MeshBuilder.CreateSphere("player", { diameterX: 0.75, diameterY: 2, diameterZ: 0.75 });
-        this._xrCameraCollider.visibility = 0;
-        this._xrCameraCollider.checkCollisions = true;
-        this._xrCameraCollider.position = this._xrCamera.position;
-
-        
-
-
-
-
-        // GUI ####################################################################
-        // ########################################################################        
 
         // create fullscreen UI for GUI elements
-        const playerUI = AdvancedDynamicTexture.CreateFullscreenUI("UI");
-        playerUI.idealHeight = 720;
+        const playerUI = new UI("Player UI");
         scene.detachControl(); 
 
         // create a button
-        const endBtn = Button.CreateSimpleButton("exit", "EXIT");
-        endBtn.width = 0.2;
-        endBtn.height = "40px";
-        endBtn.color = "white";
-        endBtn.top = "-14px";
-        endBtn.thickness = 0;
-        endBtn.verticalAlignment = Control.VERTICAL_ALIGNMENT_BOTTOM;
-        playerUI.addControl(endBtn);
+        const endBtn = playerUI.createBtn("EXIT");
 
         endBtn.onPointerDownObservable.add(() =>
         {
             this._goToEnd();
-            scene.detachControl();
         })
 
-        // create container
-        const rect1 = new Rectangle();
-        rect1.width = 0.8;
-        rect1.height = "300px";
-        rect1.cornerRadius = 20;
-        // rect1.color = "Orange";
-        // rect1.thickness = 4;
-        rect1.background = "white";
-        rect1.alpha = 0.7;
-        playerUI.addControl(rect1);
-        rect1.isVisible = false;
-
-        const panel = new StackPanel();
-        rect1.addControl(panel);
-
-        const textBox = new TextBlock("Text Box");
-        textBox.text = "Words go here";
-        textBox.color = "black";
-        textBox.fontSize = 24;
-        textBox.height = "200px";
-        textBox.width = "400px";
-        panel.addControl(textBox);
-
-        const sliderHeader = new TextBlock();
-        sliderHeader.text = "5";
-        sliderHeader.color = "black";
-        sliderHeader.fontSize = 24;
-        sliderHeader.height = "40px";
-        panel.addControl(sliderHeader); 
-
-        const slider = new Slider();
-        var rating;
-        slider.minimum = 0;
-        slider.maximum = 10;
-        slider.value = 5;
-        slider.step = 1;
-        slider.height = "20px";
-        slider.width = "400px";
-        slider.onValueChangedObservable.add(function(value) {
-            sliderHeader.text = value.toString();
-            rating = value;
-        });
-        panel.addControl(slider);
-
-        const submitBtn = Button.CreateSimpleButton("submit", "Submit");
-        submitBtn.width = 0.2;
-        submitBtn.height = "80px";
-        submitBtn.color = "black";
-        submitBtn.top = "-14px";
-        submitBtn.thickness = 0;
-        submitBtn.verticalAlignment = Control.VERTICAL_ALIGNMENT_BOTTOM;
-        panel.addControl(submitBtn);
-
-        submitBtn.onPointerDownObservable.add(() =>
-        {
-            console.log(rating);
-        })
-
-        // ########################################################################        
-        // ########################################################################
-
-
+        // create discomfort score popup for checkpoints
+        const dsPrompt = playerUI.createDSPrompt();
 
 
         // get rid of start scene and switch to gameScene
         this._scene.dispose();
-        this._state = State.GAME;
+        this._state = State.MAIN;
         this._scene = scene;
         this._engine.hideLoadingUI();
 
@@ -338,7 +229,7 @@ class App
         // a bunch of temporary stuff please clean me up
 
         // Our built-in 'sphere' shape.
-        var sphere = MeshBuilder.CreateSphere("sphere", { diameter: 1, segments: 32 }, scene);
+        let sphere = MeshBuilder.CreateSphere("sphere", { diameter: 1, segments: 32 }, scene);
         sphere.checkCollisions = true;
 
         // Move the sphere upward and forward
@@ -350,9 +241,13 @@ class App
             new ExecuteCodeAction(
                 { 
                     trigger: ActionManager.OnIntersectionEnterTrigger,
-                    parameter: { mesh: this._xrCameraCollider }
+                    parameter: { mesh: this._playerCollider }
                 },
-                () => { rect1.isVisible = true; }
+                () => 
+                {
+                    // disable locomotion!!!
+                    dsPrompt.isVisible = true;
+                }
             )
         );
 
@@ -362,42 +257,30 @@ class App
     }
 
     private async _goToEnd() : Promise<void> {
+        await this._playerController.xrHelper.baseExperience.exitXRAsync();
+
         // display loading screen while loading
         this._engine.displayLoadingUI();
 
+
         // create scene and camera
         this._scene.detachControl();
-        let scene = new Scene(this._engine);
+        const scene = new Scene(this._engine);
         scene.clearColor = new Color4(0, 0, 0, 1);
-        let camera = new FreeCamera("camera1", Vector3.Zero(), scene);
+        const camera = new FreeCamera("camera1", Vector3.Zero(), scene);
         camera.setTarget(Vector3.Zero());
 
-        // GUI ################################################################
+
         // create fullscreen UI for GUI elements
-        const guiMenu = AdvancedDynamicTexture.CreateFullscreenUI("UI");
-        guiMenu.idealHeight = 720;
+        const guiMenu = new UI("End UI");
 
         // display instructions
-        var textBox = new TextBlock("Text Box");
-        textBox.text = "Some lorem ipsum and stuff";
-        textBox.color = "black";
-        textBox.fontSize = 48;
-        guiMenu.addControl(textBox);
-        textBox.isVisible = true;
+        guiMenu.createMsg("Instructions for zipping and uploading data or maybe, instead, a button that trigger script for automatically zipping and uploading data or launches link to post-experiment questionnaire");
 
         // create a button
-        const btn = Button.CreateSimpleButton("end", "END");
-        btn.width = 0.2;
-        btn.height = "40px";
-        btn.color = "white";
-        btn.top = "-14px";
-        btn.thickness = 0;
-        btn.verticalAlignment = Control.VERTICAL_ALIGNMENT_BOTTOM;
-        guiMenu.addControl(btn);
+        const uploadBtn = guiMenu.createBtn("UPLOAD");
+        // would need to attach to some script or something here
 
-        // display additional instructions, possibly
-        // a button to automatically download zip file
-        // and sent it or something
 
         // after scene loads
         await scene.whenReadyAsync();
@@ -406,7 +289,7 @@ class App
         // set current state to end state
         this._scene.dispose();
         this._scene = scene;
-        this._state = State.END;
+        this._state = State.POSTTEST;
     }
 }
 
