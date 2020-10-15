@@ -1,16 +1,19 @@
-import { Color4, Engine, FreeCamera, HemisphericLight, Mesh, MeshBuilder, Scene, WebXRCamera } from "@babylonjs/core";
+import { Color4, Engine, FreeCamera, Scene } from "@babylonjs/core";
+import { WebXRCamera, WebXRInputSource } from "@babylonjs/core/XR";
+import { Mesh, MeshBuilder } from "@babylonjs/core/Meshes";
 import { ActionManager, ExecuteCodeAction } from "@babylonjs/core";
 import { Vector3 } from "@babylonjs/core/Maths/math";
 
 // custom classes
 import { Environment } from "./environment";
-import { PlayerController } from "./playerController";
 import { UI } from "./UI";
+import { PlayerController } from "./playerController";
+import { InputManager } from "./inputManager";
 
 // side effects
 import "@babylonjs/core/Debug/debugLayer";
 import "@babylonjs/inspector";
-import "@babylonjs/loaders/glTF";
+// import "@babylonjs/loaders/glTF";
 
 enum State { START = 0, PRETEST = 1, MAIN = 2, POSTTEST = 3 }
 
@@ -28,8 +31,11 @@ class App
 
     // game state stuff
     private _environment: Environment;
+
+    // player stuff
+    private _inputManager: InputManager;
     private _playerController: PlayerController;
-    private _player: WebXRCamera;
+    private _player: WebXRCamera | null;
     private _playerCollider: Mesh;
 
     constructor()
@@ -59,10 +65,8 @@ class App
                     this._scene.render();
                     break;
                 case State.MAIN:
+                    this._update();
                     this._scene.render();
-
-                    // is lerping really necessary for an invisible collider???? maybe not?
-                    this._playerCollider.position = Vector3.Lerp(this._playerCollider.position, this._player.position, 0.4);
                     break;
                 case State.POSTTEST:
                     this._scene.render();
@@ -78,28 +82,50 @@ class App
         });
     }
 
+    private _update() : void
+    {
+        this._inputManager?.processControllerInput();
+        this._playerController?.updateMovement();
+    }
+
     private async _setUpGame() : Promise<void>
     {
+        let leftController: WebXRInputSource;
+        let rightController: WebXRInputSource;
+
         // create scene
         const scene = new Scene(this._engine);
         this._mainScene = scene;
 
         // create environment
         this._environment = new Environment(scene);
-        await this._environment.load().then(res => 
-            {
+        await this._environment.load().then(res => {
                 // set up (backup) non-VR camera & collider
                 this._playerController = new PlayerController(scene, this._canvas);
         });
 
-        // set up XR camera & collider
-        await this._playerController.loadXR().then(res => 
-            {
-                this._player = this._playerController.xrHelper.input.xrCamera;
-                this._playerCollider = this._playerController.createXRCollider();
-                this._playerCollider.position = this._player.position;
-        })
+        // set up XR camera, collider, controllers
+        await this._playerController.loadXR().then(res => {
+                this._player = this._playerController.xrCamera;
+                this._playerCollider = this._playerController.playerCollider;
 
+                this._playerController.xrHelper.input.onControllerAddedObservable.add((inputSource) => {
+                    if (inputSource.uniqueId.endsWith("left"))
+                    {
+                        leftController = inputSource;
+                    }
+                    else
+                    {
+                        rightController = inputSource;
+                    }
+
+                    // create input manager
+                    this._inputManager = new InputManager(this._scene, leftController, rightController);
+
+                    // this might be a hacky workaround for a circular dependency...? bug Courtney?
+                    this._playerController.setInputManager(this._inputManager);
+                });
+        });
     }
 
     private async _goToStart() : Promise<void>
@@ -158,14 +184,15 @@ class App
         // create fullscreen UI for GUI elements
         const loadingUI = new UI("Pretest UI");
 
-        // create prettest questionnaire
-        loadingUI.createSSQ();
+        // // create prettest questionnaire
+        // loadingUI.createSSQ();
 
         // create a button
         const nextBtn = loadingUI.createBtn("NEXT");
 
         nextBtn.onPointerDownObservable.add(() =>
         {
+            // loadingUI.submitSSQ();
             this._goToGame();
         })
 
@@ -183,12 +210,13 @@ class App
         let finishedLoading = false;
         await this._setUpGame().then(res => {
             finishedLoading = true;
+            // this._goToGame();
         });
 
-        this._scene.debugLayer.show();
+        // this._scene.debugLayer.show();
     }
 
-    private async _goToGame()
+    private async _goToGame() : Promise<void>
     {
         // set up scene
         this._scene.detachControl();

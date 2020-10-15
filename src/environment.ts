@@ -1,5 +1,8 @@
-import { HemisphericLight, Mesh, MeshBuilder, Scene, StandardMaterial, Texture, WebXRDefaultExperience } from "@babylonjs/core";
+import { HemisphericLight, MeshBuilder, Scene, SceneLoader, StandardMaterial, Texture, WebXRDefaultExperience } from "@babylonjs/core";
 import { Color3, Vector3 } from "@babylonjs/core/Maths/math";
+
+// side effects
+import "@babylonjs/loaders/glTF/2.0/glTFLoader";
 
 
 export class Environment
@@ -14,22 +17,28 @@ export class Environment
 
     public async load()
     {
-        // // XR & camera stuff ######################################################
-        // // ########################################################################
-        // this.xrHelper = await this._scene.createDefaultXRExperienceAsync({ disableTeleportation: true });
+        var allMeshes;
 
-        // const xrCamera = this.xrHelper.input.xrCamera;
+        // // load meshes
+        // SceneLoader.ImportMesh("", "assets/models/", "Maze.glb", this._scene, (meshes) =>
+        // {
+        //     meshes[0].name = "Maze";
+        //     meshes[0].scaling = new Vector3(2, 2, 2);
+        //     meshes[0].rotation = new Vector3(0, Math.PI, 0);
 
-        // xrCamera.name = "XR Camera";
-        // xrCamera.applyGravity = true;
-        // xrCamera.checkCollisions = true;
+        //     allMeshes = meshes[0].getChildMeshes();
 
+        //     allMeshes.forEach(element => {
+        //         // element.receiveShadows = true;
+        //         element.checkCollisions = true;
+        //     });
+        // });
 
         // Assets stuff ###########################################################
         // ########################################################################
 
         // load textures
-        var wallTexture = new Texture("textures/brick.png", this._scene);
+        var wallTexture = new Texture("assets/textures/brick.png", this._scene);
         wallTexture.uScale = 5;
         wallTexture.vScale = 1;
 
@@ -45,24 +54,27 @@ export class Environment
         // Physics ################################################################
         // ########################################################################
 
-        // Create gravity
+        // create gravity
         this._scene.gravity = new Vector3(0, -9.81, 0);
 
-        // Enable collisions
+        // enable collisions
         this._scene.collisionsEnabled = true;
 
         // Objects ################################################################
         // ########################################################################
 
-        // Create a default skybox
+        // create default skybox
         const environment = this._scene.createDefaultEnvironment({
             createGround: false,
             skyboxSize: 250,
             skyboxColor: new Color3(0.059, 0.663, 0.80)
         });
         
-        // Our built-in 'ground' shape.
-        var ground = MeshBuilder.CreateGround("ground", { width: 25, height: 25 }, this._scene);
+        // // create invisible ground for physics collisions
+        // environment!.ground!.isVisible = false;
+        // environment!.ground!.position = new Vector3(0, 0, 0);
+
+        var ground = MeshBuilder.CreateGround("ground", { width: 100, height: 100 }, this._scene);
 
         // Enable collisions on ground
         ground.checkCollisions = true;

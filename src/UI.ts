@@ -1,35 +1,74 @@
 import { AdvancedDynamicTexture } from "@babylonjs/gui/2D";
 import { Button, Control, Grid, RadioButton, Rectangle, Slider, StackPanel, TextBlock } from "@babylonjs/gui/2D/controls";
 
+// const TABLE_WIDTH: number = 800;
+// const ROW_HEIGHT: number = 32;
+// const COL_WIDTH: number  = 100;
+// const FIRST_COL_WIDTH: number = TABLE_WIDTH - 4 * COL_WIDTH;
+
+// const SSQ_QUESTIONS: Array<string> = [
+//     "General discomfort",
+//     "Fatigue",
+//     "Headache",
+//     "Eye strain",
+//     "Difficulty focusing",
+//     "Increased salivation",
+//     "Sweating",
+//     "Nausea",
+//     "Difficulty concentrating",
+//     "Fullness of head",
+//     "Blurred vision",
+//     "Dizzy (eyes open)",
+//     "Dizzy (eyes closed)",
+//     "Vertigo",
+//     "Stomach awareness",
+//     "Burping"
+// ];
+
+// enum Rating { NONE = 0, SLIGHT = 1, MODERATE = 2, SEVERE = 3 }
+// const SSQ_RATINGS: Array<string> = [
+//     "None",
+//     "Slight",
+//     "Moderate",
+//     "Severe"
+// ]
+
 export class UI
 {
     public menu: AdvancedDynamicTexture;
-    private _SSQquestions = [
-        "Are you motion sick right now?",
-        "General discomfort",
-        "Fatigue",
-        "Headache",
-        "Eye strain",
-        "Difficulty focusing",
-        "Increased salivation",
-        "Sweating",
-        "Nausea",
-        "Difficulty concentrating",
-        "Fullness of head",
-        "Blurred vision",
-        "Dizzy (eyes open)",
-        "Dizzy (eyes closed)",
-        "Vertigo",
-        "Stomach awareness",
-        "Burping"
-    ];
+    // private _cybersickAnswer: boolean | null;       // user answer  to "Are you motion sick right now?"
+    // private _SSQanswers: Array<number> = [];        // parallel array for user answer to each SSQ
 
-    private _SSQratings = [
-        "None",
-        "Slight",
-        "Moderate",
-        "Severe"
-    ]
+    private static readonly TABLE_WIDTH: number = 100;
+    private static readonly ROW_HEIGHT: number = 32;
+    private static readonly COL_WIDTH: number = 100;
+    private static readonly FIRST_COL_WIDTH = UI.TABLE_WIDTH - 4 * UI.COL_WIDTH;
+
+    // private static readonly SSQ_QUESTIONS: Array<string> = [
+    //     "General discomfort",
+    //     "Fatigue",
+    //     "Headache",
+    //     "Eye strain",
+    //     "Difficulty focusing",
+    //     "Increased salivation",
+    //     "Sweating",
+    //     "Nausea",
+    //     "Difficulty concentrating",
+    //     "Fullness of head",
+    //     "Blurred vision",
+    //     "Dizzy (eyes open)",
+    //     "Dizzy (eyes closed)",
+    //     "Vertigo",
+    //     "Stomach awareness",
+    //     "Burping"
+    // ];
+
+    // private static readonly SSQ_RATINGS: Array<string> = [
+    //     "None",
+    //     "Slight",
+    //     "Moderate",
+    //     "Severe"
+    // ];
 
     constructor(name: string)
     {
@@ -125,111 +164,174 @@ export class UI
         return container;
     }
 
-    public createSSQ() : void
-    {
-        const grid = new Grid();
-        grid.background = "white";
-        grid.alpha = 0.7;
-        grid.width = "800px";
-        this.menu.addControl(grid);
+    // public createSSQ() : void
+    // {
+    //     // create container
+    //     const panel = new StackPanel();
+    //     panel.fontSizeInPixels = 18;
+    //     this.menu.addControl(panel);
 
-        // create rows and columns
-        grid.addColumnDefinition(400, true);    // question
-        // for radio buttons
-        for (let col = 0; col < 4; col++)
-        {
-            grid.addColumnDefinition(100, true);
-            grid.addColumnDefinition(100, true);
-            grid.addColumnDefinition(100, true);
-            grid.addColumnDefinition(100, true);
-        }
-        // yes/no cybersick question, blank row,
-        // instructions, plus 16 SSQ questions
-        for (let row = 0; row < 18; row++)
-        {
-            grid.addRowDefinition(35, true);
-        }
+    //     // create 3 grids, all with different # of cols
+    //     // 1 for "Are you motion sick right now?"
+    //     // 1 for instructions
+    //     // 1 for SSQ questions
+    //     // heights MUST be defined in pixels to work in stackpanel
+    //     const cybersickGrid = new Grid();
+    //     cybersickGrid.background = "white";
+    //     cybersickGrid.alpha = 0.7;
+    //     cybersickGrid.widthInPixels = UI.TABLE_WIDTH;
+    //     cybersickGrid.heightInPixels = UI.ROW_HEIGHT;
+    //     panel.addControl(cybersickGrid);
 
-        // color every other row in questionnaire
-        for (let row = 1; row < 18; row += 2)
-        {
-            for (let col = 0; col < 5; col++)
-            {
-                let rect = new Rectangle();
-                rect.background = "white";
-                grid.addControl(rect, row, col);
-            }
-        }
+    //     const instructionsGrid = new Grid();
+    //     instructionsGrid.background = "white";
+    //     instructionsGrid.alpha = 0.9;
+    //     instructionsGrid.widthInPixels = UI.TABLE_WIDTH;
+    //     instructionsGrid.heightInPixels = UI.ROW_HEIGHT;
+    //     panel.addControl(instructionsGrid);
 
-        const cybersick = this.createSSQTextbox(this._SSQquestions[0]);
-        let yes = this.createRadioButton("Yes", this._SSQquestions[0]);
-        let no = this.createRadioButton("No", this._SSQquestions[0]);
-        grid.addControl(cybersick, 0, 0);
-        grid.addControl(yes, 0, 1);
-        grid.addControl(no, 0, 2);
+    //     const SSQGrid = new Grid();
+    //     SSQGrid.background = "white";
+    //     SSQGrid.alpha = 0.7;
+    //     SSQGrid.widthInPixels = UI.TABLE_WIDTH;
+    //     SSQGrid.heightInPixels = UI.SSQ_QUESTIONS.length * UI.ROW_HEIGHT;
+    //     panel.addControl(SSQGrid);
 
-        const instructions = this.createSSQTextbox("Select how much each of the following symptoms is affecting you right now.");
-        instructions.paddingLeftInPixels = 25;
-        grid.addControl(instructions, 1, 0);
+    //     // create rows and columns
+    //     // 3 cols for "Are you motion sick right now?"
+    //     cybersickGrid.addColumnDefinition(UI.FIRST_COL_WIDTH, true);
+    //     cybersickGrid.addColumnDefinition(UI.COL_WIDTH, true);
+    //     cybersickGrid.addColumnDefinition(UI.COL_WIDTH, true);
 
-        // SSQ questions
-        for (let row = 2; row < 18; row++)
-        {
-            // prompts
-            let question = this.createSSQTextbox(this._SSQquestions[row - 1]);
-            grid.addControl(question, row, 0);
+    //     // 16 rows & 5 cols for SSQ questions
+    //     SSQGrid.addColumnDefinition(UI.FIRST_COL_WIDTH, true);
+    //     for (let col = 1; col < 5; col++)
+    //     {
+    //         SSQGrid.addColumnDefinition(UI.COL_WIDTH, true);
+    //     }
+    //     for (let row = 0; row < 16; row++)
+    //     {
+    //         SSQGrid.addRowDefinition(UI.ROW_HEIGHT, true);           
+    //     }
 
-            // radio buttons
-            let group = this._SSQquestions[row - 1];
-            for (let col = 1; col <5; col++)
-            {
-                // let selection = this.createRadioButton(this._SSQratings[col - 1]);
-                let selection = this.createRadioButton(this._SSQratings[col - 1], group);
-                grid.addControl(selection, row, col);
-            }
-        }
+    //     // color every other row for readability
+    //     for (let row = 1; row < 16; row += 2)
+    //     {
+    //         for (let col = 0; col < 5; col++)
+    //         {
+    //             let rect = new Rectangle();
+    //             rect.background = "white";
+    //             rect.alpha = 0.8;
+    //             SSQGrid.addControl(rect, row, col);
+    //         }
+    //     }
 
-        // SSQ radio buttons
-        for (let row = 3; row < 17; row++)
-        {
+    //     // fill grid with prompts/questions
+    //     const q1 = "Are you motion sick right now?";
+    //     const q1Box = this.createSSQTextbox(q1);
 
-        }
-    }
+    //     let yes = this.createRadioButton(q1);
+    //     yes.onIsCheckedChangedObservable.add(function(state)
+    //     {
+    //         if (state)
+    //         {
+    //             this._cybersickAnswer = true;
+    //             console.log(this._cybersickAnswer);
+    //         }
+    //     });
+    //     let y = this.createButtonHeader(yes, "Yes");
 
-    private createSSQTextbox(question: string) : TextBlock
-    {
-        const textbox = new TextBlock();
-        textbox.text = question;
+    //     let no = this.createRadioButton(q1);
+    //     yes.onIsCheckedChangedObservable.add(function(state)
+    //     {
+    //         if (state)
+    //         {
+    //             this._cybersickAnswer = false;
+    //         }
+    //     });
+    //     let n = this.createButtonHeader(no, "No");
 
-        textbox.horizontalAlignment = Control.HORIZONTAL_ALIGNMENT_LEFT;
-        textbox.textHorizontalAlignment = Control.HORIZONTAL_ALIGNMENT_LEFT;
+    //     cybersickGrid.addControl(q1Box, 0, 0);
+    //     cybersickGrid.addControl(y, 0, 1);
+    //     cybersickGrid.addControl(n, 0, 2);
 
-        textbox.paddingLeftInPixels = 50;
-        // textbox.paddingTopInPixels= 25;
+    //     const instrBox = this.createSSQTextbox("Please select how much each of the following symptoms is affecting you right now:");
+    //     instrBox.paddingLeftInPixels = 25;
+    //     instructionsGrid.addControl(instrBox, 0, 0);
 
-        textbox.widthInPixels = 400;
-        textbox.heightInPixels = 100;
-        textbox.color = "black";
-        textbox.fontSizeInPixels = 18;
+    //     // SSQ questions
+    //     for (let row = 0; row < 16; row++)
+    //     {
+    //         // prompts
+    //         let question = this.createSSQTextbox(UI.SSQ_QUESTIONS[row]);
+    //         SSQGrid.addControl(question, row, 0);
 
-        return textbox;
-    }
+    //         // radio buttons
+    //         let group = UI.SSQ_QUESTIONS[row];
+    //         for (let col = 1; col < 5; col++)
+    //         {
+    //             let button = this.createRadioButton(group);
+    //             button.onIsCheckedChangedObservable.add(function(state)
+    //             {
+    //                 if (state)
+    //                 {
+    //                     console.log(group + " " + (col - 1));
+    //                     this._SSQanswers[row] = col - 1;
+    //                 }
+    //             });
 
-    private createRadioButton(text: string, group: string) : Control
-    {
-        let btn = new RadioButton();
+    //             let selection = this.createButtonHeader(button, UI.SSQ_RATINGS[col - 1]);
+    //             SSQGrid.addControl(selection, row, col);
+    //         }
+    //     }
+    // }
 
-        btn.group = group;
+    // private createSSQTextbox(question: string) : TextBlock
+    // {
+    //     const textbox = new TextBlock();
+    //     textbox.text = question;
+
+    //     textbox.horizontalAlignment = Control.HORIZONTAL_ALIGNMENT_LEFT;
+    //     textbox.textHorizontalAlignment = Control.HORIZONTAL_ALIGNMENT_LEFT;
+
+    //     textbox.paddingLeftInPixels = 40;
+
+    //     textbox.widthInPixels = UI.FIRST_COL_WIDTH;
+    //     textbox.heightInPixels = UI.ROW_HEIGHT;
+    //     textbox.color = "black";
+
+    //     return textbox;
+    // }
+
+    // private createRadioButton(group: string) : RadioButton
+    // {
+    //     let btn = new RadioButton();
+
+    //     btn.group = group;
         
-        btn.width = "10px";
-        btn.height = "10px";
+    //     btn.width = "10px";
+    //     btn.height = "10px";
 
-        btn.color = "black";
-        btn.background = "gray";
+    //     btn.color = "black";
+    //     btn.background = "gray";
 
-        let header = Control.AddHeader(btn, text, "75px", { isHorizontal: true, controlFirst: true });
-        header.heightInPixels = 100;
+    //     return btn;
+    // }
 
-        return header;
-    }
+    // private createButtonHeader(btn: RadioButton, text: string) : Control
+    // {
+    //     let header = Control.AddHeader(btn, text, "80px", { isHorizontal: true, controlFirst: true});
+    //     header.heightInPixels = UI.ROW_HEIGHT;
+
+    //     return header;
+    // }
+
+    // public submitSSQ() : void
+    // {
+    //     // for (let question = 0; question < this._SSQanswers.length; question++)
+    //     // {
+    //     //     console.log(this._SSQanswers);
+    //     // }
+    //     console.log(this._cybersickAnswer + " from submitSSQ");
+    // }
 }
