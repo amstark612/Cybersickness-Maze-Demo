@@ -7,6 +7,7 @@ import { Vector3 } from "@babylonjs/core/Maths/math";
 // custom classes
 import { Environment } from "./environment";
 import { UI } from "./UI";
+import { gui3D } from "./gui3D";
 import { PlayerController } from "./playerController";
 import { InputManager } from "./inputManager";
 
@@ -35,8 +36,6 @@ class App
     // player stuff
     private _inputManager: InputManager;
     private _playerController: PlayerController;
-    private _player: WebXRCamera | null;
-    private _playerCollider: Mesh;
 
     constructor()
     {
@@ -106,9 +105,6 @@ class App
 
         // set up XR camera, collider, controllers
         await this._playerController.loadXR().then(res => {
-                this._player = this._playerController.xrCamera;
-                this._playerCollider = this._playerController.playerCollider;
-
                 this._playerController.xrHelper.input.onControllerAddedObservable.add((inputSource) => {
                     if (inputSource.uniqueId.endsWith("left"))
                     {
@@ -122,8 +118,11 @@ class App
                     // create input manager
                     this._inputManager = new InputManager(this._scene, leftController, rightController);
 
-                    // this might be a hacky workaround for a circular dependency...? bug Courtney?
-                    this._playerController.setInputManager(this._inputManager);
+                    // this might be a hacky workaround for a circular dependency...? ask Courtney?
+                    this._playerController.inputManager = this._inputManager;
+
+                    // make it rain coins
+                    this._environment.generateCoins(this._playerController.collider);
                 });
         });
     }
@@ -146,7 +145,7 @@ class App
         const guiMenu = new UI("UI");
 
         // print instructions
-        guiMenu.createMsg("Some intructions and lorem ipsum and stuff");
+        guiMenu.createMsg("Some instructions and stuff");
 
         // create a button
         const startBtn = guiMenu.createBtn("NEXT");
@@ -184,8 +183,13 @@ class App
         // create fullscreen UI for GUI elements
         const loadingUI = new UI("Pretest UI");
 
-        // // create prettest questionnaire
-        // loadingUI.createSSQ();
+
+
+
+        // ask user for handedness here
+
+
+
 
         // create a button
         const nextBtn = loadingUI.createBtn("NEXT");
@@ -222,21 +226,25 @@ class App
         this._scene.detachControl();
         const scene = this._mainScene;
 
+        // create UI
+        const playerUI = new gui3D("Player UI", this._scene, this._playerController.collider);
 
-        // create fullscreen UI for GUI elements
-        const playerUI = new UI("Player UI");
-        scene.detachControl(); 
 
-        // create a button
-        const endBtn = playerUI.createBtn("EXIT");
 
-        endBtn.onPointerDownObservable.add(() =>
-        {
-            this._goToEnd();
-        })
+        // // create fullscreen UI for GUI elements
+        // const playerUI = new UI("Player UI");
+        // scene.detachControl(); 
 
-        // create discomfort score popup for checkpoints
-        const dsPrompt = playerUI.createDSPrompt();
+        // // create a button
+        // const endBtn = playerUI.createBtn("EXIT");
+
+        // endBtn.onPointerDownObservable.add(() =>
+        // {
+        //     this._goToEnd();
+        // })
+
+        // // create discomfort score popup for checkpoints
+        // const dsPrompt = playerUI.createDSPrompt();
 
 
         // get rid of start scene and switch to gameScene
@@ -254,34 +262,32 @@ class App
 
 
 
-        // a bunch of temporary stuff please clean me up
+        // // a bunch of temporary stuff please clean me up
 
-        // Our built-in 'sphere' shape.
-        let sphere = MeshBuilder.CreateSphere("sphere", { diameter: 1, segments: 32 }, scene);
-        sphere.checkCollisions = true;
+        // // Our built-in 'sphere' shape.
+        // let sphere = MeshBuilder.CreateSphere("sphere", { diameterX: 0.3, diameterY: 0.3, diameterZ: 0.1, segments: 32 }, scene);
+        // sphere.checkCollisions = true;
 
-        // Move the sphere upward and forward
-        sphere.position = new Vector3(0, 1, 2);
+        // // Move the sphere upward and forward
+        // sphere.position = new Vector3(0, 1, 2);
 
-        // Add action to sphere
-        sphere.actionManager = new ActionManager(scene);
-        sphere.actionManager.registerAction(
-            new ExecuteCodeAction(
-                { 
-                    trigger: ActionManager.OnIntersectionEnterTrigger,
-                    parameter: { mesh: this._playerCollider }
-                },
-                () => 
-                {
-                    // disable locomotion!!!
-                    dsPrompt.isVisible = true;
-                }
-            )
-        );
-
+        // // Add action to sphere
+        // sphere.actionManager = new ActionManager(scene);
+        // sphere.actionManager.registerAction(
+        //     new ExecuteCodeAction(
+        //         { 
+        //             trigger: ActionManager.OnIntersectionEnterTrigger,
+        //             parameter: { mesh: this._playerController.collider }
+        //         },
+        //         () => 
+        //         {
+        //             // disable locomotion!!!
+        //             dsPrompt.isVisible = true;
+        //         }
+        //     )
+        // );
 
         scene.debugLayer.show();
-        
     }
 
     private async _goToEnd() : Promise<void> {
@@ -290,7 +296,6 @@ class App
         // display loading screen while loading
         this._engine.displayLoadingUI();
 
-
         // create scene and camera
         this._scene.detachControl();
         const scene = new Scene(this._engine);
@@ -298,17 +303,11 @@ class App
         const camera = new FreeCamera("camera1", Vector3.Zero(), scene);
         camera.setTarget(Vector3.Zero());
 
-
         // create fullscreen UI for GUI elements
         const guiMenu = new UI("End UI");
 
         // display instructions
-        guiMenu.createMsg("Instructions for zipping and uploading data or maybe, instead, a button that trigger script for automatically zipping and uploading data or launches link to post-experiment questionnaire");
-
-        // create a button
-        const uploadBtn = guiMenu.createBtn("UPLOAD");
-        // would need to attach to some script or something here
-
+        guiMenu.createMsg("Instructions for uploading data or whatever needs to happen after demo");
 
         // after scene loads
         await scene.whenReadyAsync();

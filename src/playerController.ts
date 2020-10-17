@@ -8,21 +8,22 @@ export class PlayerController
 {
     public xrHelper: WebXRDefaultExperience;
     public xrCamera: WebXRCamera;
-    public playerCollider: Mesh;
+    public collider: Mesh;
+    public enableLocomotion: boolean = true;
 
     private _scene: Scene;
 
     // locomotion stuff
+    private static readonly SPEED: number = 0.05;
     private _moveDirection: Vector3 = Vector3.Zero();
-    private _inputManager: InputManager;
-
+    public inputManager: InputManager;
 
     constructor(scene: Scene, canvas: HTMLCanvasElement)
     {
         this._scene = scene;
 
         // this creates and positions a first-person non-VR camera (non-mesh)
-        const camera = new FreeCamera("Default Camera", new Vector3(0, 4, -2), scene);
+        const camera = new FreeCamera("Default Camera", new Vector3(0, 1.6, 0.75), scene);
         
         // set non-VR camera view to VR camera's view
         camera.fov = 90 * Math.PI / 180;
@@ -48,14 +49,14 @@ export class PlayerController
         this.xrCamera = this.xrHelper.input.xrCamera;
         this.xrCamera.name = "XR Camera";
 
-        this.playerCollider = this.createXRCollider();
+        this.collider = this._createXRCollider();
 
         // setting these to true doesn't DO anything...?
-        // xrCamera.applyGravity = true;
-        // xrCamera.checkCollisions = true;
+        this.xrCamera.applyGravity = true;
+        this.xrCamera.checkCollisions = true;
     }
 
-    private createXRCollider() : Mesh
+    private _createXRCollider() : Mesh
     {
         // create ellipsoid for VR player collisions
         const collider = MeshBuilder.CreateSphere("Player", { diameterX: 0.5, diameterY: 1, diameterZ: 0.5 });
@@ -66,33 +67,31 @@ export class PlayerController
         return collider;
     }
 
-    public setInputManager(inputManager: InputManager)
-    {
-        this._inputManager = inputManager;
-    }
-
     public updateMovement() : void
     {
 
-        if (this._inputManager?.z)
+        if (this.inputManager?.z && this.enableLocomotion)
         {
-            // this._deltaTime = this._scene.getEngine().getDeltaTime() / 1000.0;
-
             // get player/camera's forward vector
             let forward: Vector3 = this.xrCamera.getDirection(Vector3.Forward());
 
-            // multiply by thumbstick's up/down value
-            let direction: Vector3 = forward.scaleInPlace(-this._inputManager.z * 0.3);
+            // +1 = forwards, -1 = backwards
+            let input: number = -(this.inputManager.z/Math.abs(this.inputManager.z));
+
+            // multiply player's forward vector by direction and speed
+            let direction: Vector3 = forward.scaleInPlace(input * PlayerController.SPEED);
 
             // add resulting vector to camera's current position vector
             this._moveDirection =  this.xrCamera.position.addInPlace(direction);
-            this._moveDirection.y = this.xrCamera.position.y;      // so user can't go flying up in the air
+
+            // ask Courtney how to set this to user's height...using this.xrCamera.position.y still flies
+            this._moveDirection.y = 1.6;      // so user can't go flying up in the air
 
             // set camera's new position
             this.xrCamera.position = this._moveDirection;
 
             // this is a hacky workaround for the collider because the WebXRCamera collider doesn't DO anything
-            this.playerCollider.position = this.xrCamera.position;
+            this.collider.position = this.xrCamera.position;
         }
     }
 }
