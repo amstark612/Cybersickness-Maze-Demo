@@ -1,9 +1,13 @@
+import { Mesh, MeshBuilder, Scene } from "@babylonjs/core";
 import { AdvancedDynamicTexture } from "@babylonjs/gui/2D";
-import { Button, Control, Grid, RadioButton, Rectangle, Slider, StackPanel, TextBlock } from "@babylonjs/gui/2D/controls";
+import { Button, Control, Grid, Image, Slider, StackPanel, TextBlock } from "@babylonjs/gui/2D/controls";
 
 export class UI
 {
     private _menu: AdvancedDynamicTexture;
+
+    private static readonly DSmin: number = 0;
+    private static readonly DSmax: number = 10;
 
     constructor(name: string)
     {
@@ -20,7 +24,7 @@ export class UI
     public createMsg(message: string) : void
     {
        // display instructions
-       const textBox = new TextBlock("Text Box");
+       const textBox: TextBlock = new TextBlock("Text Box");
        textBox.text = message;
        textBox.color = "black";
        textBox.fontSize = 48;
@@ -30,7 +34,7 @@ export class UI
     public createBtn(name: string) : Button
     {
         // create a button
-        const btn = Button.CreateSimpleButton(name + " button", name);
+        const btn: Button = Button.CreateSimpleButton(name + " button", name);
         btn.height = "120px";
         btn.color = "white";
         btn.width = 0.2;
@@ -42,65 +46,110 @@ export class UI
         return btn;
     }
 
-    public createDSPrompt() : Rectangle
+    public createDSPrompt(scene: Scene) : Mesh
     {
-        // create container
-        const container = new Rectangle();
-        container.width = 0.8;
-        container.height = "300px";
-        container.cornerRadius = 20;
-        container.background = "white";
-        container.alpha = 0.7;
-        this._menu.addControl(container);
-        container.isVisible = false;
+        const fontSize: number = 40;
+        const textScaleY: number = 1.3; // must scale text in 3D; looks weird otherwise for some unknown reason
 
-        const panel = new StackPanel();
-        container.addControl(panel);
+        const dsPlane: Mesh = MeshBuilder.CreatePlane("dsPrompt", { width: 1.5, height: 1 }, scene);
+        dsPlane.isVisible = false;
 
-        const textBox = new TextBlock("Text Box");
-        textBox.text = "Words go here";
-        textBox.color = "black";
-        textBox.fontSize = 24;
-        textBox.height = "200px";
-        textBox.width = "400px";
-        panel.addControl(textBox);
+        // do this so it shows up right in 3D. don't ask me why because I don't know. DON'T AT ME.
+        const dsPlaneADT: AdvancedDynamicTexture = AdvancedDynamicTexture.CreateForMesh(dsPlane);
 
-        const sliderHeader = new TextBlock();
-        sliderHeader.text = "5";
-        sliderHeader.color = "black";
-        sliderHeader.fontSize = 24;
-        sliderHeader.height = "40px";
-        panel.addControl(sliderHeader); 
+        // used for organizing things vertically
+        // children must have height defined in pixels!!!
+        const stackPanel: StackPanel = new StackPanel();
+        stackPanel.background = "white";
+        stackPanel.alpha = 0.7;
+        stackPanel.heightInPixels = 900;
+        dsPlaneADT.addControl(stackPanel);
 
-        const slider = new Slider();
-        let rating: number = 5;
-        slider.minimum = 0;
-        slider.maximum = 10;
-        slider.value = 5;
+        // create prompt text
+        const text: TextBlock = new TextBlock("DS score prompt");
+        text.text = "Discomfort score prompt goes here more words and stuff to fill text block does this text wrap properly? What are the margins? Is the text squashed vertically? WHAT IS LIFE";
+        text.textWrapping = true;
+        text.widthInPixels = 750;
+        text.heightInPixels = 400;
+        text.scaleY = textScaleY;  // text looks weird in 3D otherwise for some unknown reason
+        text.fontSize = fontSize;
+
+        // grid for aligning happy/sad faces with slider
+        const grid = new Grid("DS score slider grid");
+        grid.widthInPixels = 800;
+        grid.heightInPixels = 100;
+        grid.addColumnDefinition(50, true);
+        grid.addColumnDefinition(700, true);
+        grid.addColumnDefinition(50, true);
+
+        // load happy and sad faces
+        let sadface: Image = new Image("sadface", "assets/textures/sadface.png");
+        let happyface: Image = new Image("happyface", "assets/textures/happyface.png");
+        // scale them so they're square. no, I do not, in fact, know why
+        sadface.scaleY = 0.8;
+        happyface.scaleY = 0.8;
+
+
+        // spacer as a ugly workaround for stackpanel being a POS
+        const spacer1 = new TextBlock("first spacer");
+        spacer1.heightInPixels = 50;
+
+        // create slider
+        const slider: Slider = new Slider();
+        slider.minimum = UI.DSmin;
+        slider.maximum = UI.DSmax;
+        slider.value = UI.DSmax / 2;        // default value b/c slider starts in the middle
+        let rating: number = slider.value;  // to store slider value
         slider.step = 1;
-        slider.height = "20px";
-        slider.width = "400px";
+        slider.widthInPixels = 700;
+        slider.heightInPixels = 50;
+        
+        // create header text to display slider value
+        const sliderHeader: TextBlock = new TextBlock("DS score slider value");
+        sliderHeader.heightInPixels = 150;
+        sliderHeader.scaleY = textScaleY;
+        sliderHeader.text = slider.value.toString();
+        sliderHeader.fontSize = fontSize;
+
         slider.onValueChangedObservable.add(function(value) {
             sliderHeader.text = value.toString();
             rating = value;
         });
-        panel.addControl(slider);
 
-        const submitBtn = Button.CreateSimpleButton("submit", "Submit");
-        submitBtn.width = 0.2;
-        submitBtn.height = "80px";
-        submitBtn.color = "black";
-        submitBtn.top = "-14px";
-        submitBtn.thickness = 0;
-        submitBtn.verticalAlignment = Control.VERTICAL_ALIGNMENT_BOTTOM;
-        panel.addControl(submitBtn);
+        // create spacer to insert between slider and submit button to prevent accidental submission
+        const spacer: TextBlock = new TextBlock("DS score spacer");
+        spacer.height = "75px";
 
-        submitBtn.onPointerDownObservable.add(() =>
-        {
+        // create submission button
+        const submitBtn: Button = Button.CreateSimpleButton("submit button", "Submit");
+        submitBtn.widthInPixels = 300;
+        submitBtn.heightInPixels = 80;
+        submitBtn.background = "white";
+        submitBtn.scaleY = textScaleY;
+        submitBtn.fontSize = fontSize;
+        submitBtn.thickness = 0;    // border
+        submitBtn.textBlock.textVerticalAlignment = Control.VERTICAL_ALIGNMENT_TOP;
+
+        submitBtn.onPointerDownObservable.add(function(value) {
             console.log("Discomfort score: " + rating);
-            container.isVisible = false;
+            dsPlane.isVisible = false;
         });
 
-        return container;
+        // add controls to grid from left to right
+        grid.addControl(sadface, 0, 0);
+        grid.addControl(slider, 0, 1);
+        grid.addControl(happyface, 0, 2);
+
+        // add controls in the order you'd like to see it from top to bottom
+        stackPanel.addControl(text);
+        stackPanel.addControl(spacer1);
+        stackPanel.addControl(sliderHeader);
+        stackPanel.addControl(grid);
+        stackPanel.addControl(spacer);
+        stackPanel.addControl(submitBtn);
+
+        return dsPlane;
     }
+
+
 }

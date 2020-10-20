@@ -23,16 +23,16 @@ export class Environment
     public async load()
     {
         // load textures
-        let wallTexture = new Texture("assets/textures/brick.png", this._scene);
+        let wallTexture: Texture = new Texture("assets/textures/brick.png", this._scene);
         wallTexture.uScale = 5;
-        wallTexture.vScale = 1;
-        let wallMaterial = new StandardMaterial("brick", this._scene);
+        wallTexture.vScale = 2;
+        let wallMaterial: StandardMaterial = new StandardMaterial("brick", this._scene);
         wallMaterial.diffuseTexture = wallTexture;
 
-        let groundTexture = new Texture("assets/textures/stone.png", this._scene);
+        let groundTexture: Texture = new Texture("assets/textures/stone.png", this._scene);
         groundTexture.uScale = 80;
         groundTexture.vScale = 80;
-        let groundMaterial = new StandardMaterial("stone", this._scene);
+        let groundMaterial: StandardMaterial = new StandardMaterial("stone", this._scene);
         groundMaterial.diffuseTexture = groundTexture;
 
 
@@ -47,9 +47,11 @@ export class Environment
             mazeMeshes = meshes[0].getChildMeshes();
 
             mazeMeshes.forEach(element => {
-                console.log(element.name);
-                element.checkCollisions = true;
-                element.material = wallMaterial;
+                if (element.getClassName() == "Mesh")
+                {
+                    element.checkCollisions = true;
+                    element.material = wallMaterial;
+                }
             });
         });
 
@@ -66,8 +68,8 @@ export class Environment
         // environment!.ground!.isVisible = false;
         // environment!.ground!.position = new Vector3(0, 0, 0);
 
-        let ground = MeshBuilder.CreateGround("ground", { width: 100, height: 100 }, this._scene);
-        ground.position.set(0, 0.2, 0);
+        let ground: Mesh = MeshBuilder.CreateGround("ground", { width: 100, height: 100 }, this._scene);
+        ground.position.set(0, 0.02, 0);
         ground.material = groundMaterial;
 
         // Enable collisions on ground
@@ -77,7 +79,7 @@ export class Environment
     private _createSky() : void
     {
         // create sky material
-        let skyboxMat = new SkyMaterial("sky material", this._scene);
+        let skyboxMat: SkyMaterial = new SkyMaterial("sky material", this._scene);
         skyboxMat.backFaceCulling = false;
         skyboxMat.luminance = 1;
         skyboxMat.turbidity = 10;
@@ -86,25 +88,25 @@ export class Environment
         skyboxMat.sunPosition = new Vector3(10, 50, 10);
 
         // create skybox
-        const skybox = Mesh.CreateBox("skyBox", 100, this._scene);
+        const skybox: Mesh = Mesh.CreateBox("skyBox", 100, this._scene);
         skybox.material = skyboxMat;
     }
 
     private _createLights() : void
     {
         // ambient light to illuminate objects
-        let ambientlight = new HemisphericLight("ambient", Vector3.Up(), this._scene);
+        let ambientlight: HemisphericLight = new HemisphericLight("ambient", Vector3.Up(), this._scene);
         ambientlight.intensity = 1.0;
         ambientlight.diffuse = new Color3(0.7, 0.7, 0.7);
 
         // directional light for more definition in shadows
-        let directionalLight = new DirectionalLight("sunlight", Vector3.Down(), this._scene);
+        let directionalLight: DirectionalLight = new DirectionalLight("sunlight", Vector3.Down(), this._scene);
         directionalLight.intensity = 0.6;
     }
 
     private _createCoin(collider: Mesh, position: Vector3) : void
     {
-        let coin = MeshBuilder.CreateSphere("Coin", { diameter: 0.3, segments: 32 }, this._scene);
+        let coin: Mesh = MeshBuilder.CreateSphere("Coin", { diameter: 0.3, segments: 32 }, this._scene);
         coin.position = position;
         coin.checkCollisions = true;
 

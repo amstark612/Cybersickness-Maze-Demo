@@ -23,7 +23,7 @@ export class PlayerController
         this._scene = scene;
 
         // this creates and positions a first-person non-VR camera (non-mesh)
-        const camera = new FreeCamera("Default Camera", new Vector3(0, 1.6, 0.75), scene);
+        const camera: FreeCamera = new FreeCamera("Default Camera", new Vector3(0, 1.6, 0.75), scene);
         
         // set non-VR camera view to VR camera's view
         camera.fov = 90 * Math.PI / 180;
@@ -59,7 +59,7 @@ export class PlayerController
     private _createXRCollider() : Mesh
     {
         // create ellipsoid for VR player collisions
-        const collider = MeshBuilder.CreateSphere("Player", { diameterX: 0.5, diameterY: 1, diameterZ: 0.5 });
+        const collider: Mesh = MeshBuilder.CreateSphere("Player", { diameterX: 0.5, diameterY: 1, diameterZ: 0.5 });
         collider.visibility = 0;
         collider.checkCollisions = true;
         collider.position = this.xrCamera.position;
