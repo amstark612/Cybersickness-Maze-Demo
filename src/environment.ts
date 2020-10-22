@@ -69,7 +69,7 @@ export class Environment
         // environment!.ground!.position = new Vector3(0, 0, 0);
 
         let ground: Mesh = MeshBuilder.CreateGround("ground", { width: 100, height: 100 }, this._scene);
-        ground.position.set(0, 0.02, 0);
+        ground.position.set(0, 0.04, 0);
         ground.material = groundMaterial;
 
         // Enable collisions on ground

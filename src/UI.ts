@@ -1,6 +1,6 @@
 import { Mesh, MeshBuilder, Scene } from "@babylonjs/core";
 import { AdvancedDynamicTexture } from "@babylonjs/gui/2D";
-import { Button, Control, Grid, Image, Slider, StackPanel, TextBlock } from "@babylonjs/gui/2D/controls";
+import { Button, Control, Grid, Image, Slider, TextBlock } from "@babylonjs/gui/2D/controls";
 
 export class UI
 {
@@ -57,42 +57,18 @@ export class UI
         // do this so it shows up right in 3D. don't ask me why because I don't know. DON'T AT ME.
         const dsPlaneADT: AdvancedDynamicTexture = AdvancedDynamicTexture.CreateForMesh(dsPlane);
 
-        // used for organizing things vertically
-        // children must have height defined in pixels!!!
-        const stackPanel: StackPanel = new StackPanel();
-        stackPanel.background = "white";
-        stackPanel.alpha = 0.7;
-        stackPanel.heightInPixels = 900;
-        dsPlaneADT.addControl(stackPanel);
-
         // create prompt text
         const text: TextBlock = new TextBlock("DS score prompt");
         text.text = "Discomfort score prompt goes here more words and stuff to fill text block does this text wrap properly? What are the margins? Is the text squashed vertically? WHAT IS LIFE";
         text.textWrapping = true;
         text.widthInPixels = 750;
-        text.heightInPixels = 400;
+        text.heightInPixels = 450;
         text.scaleY = textScaleY;  // text looks weird in 3D otherwise for some unknown reason
         text.fontSize = fontSize;
-
-        // grid for aligning happy/sad faces with slider
-        const grid = new Grid("DS score slider grid");
-        grid.widthInPixels = 800;
-        grid.heightInPixels = 100;
-        grid.addColumnDefinition(50, true);
-        grid.addColumnDefinition(700, true);
-        grid.addColumnDefinition(50, true);
 
         // load happy and sad faces
         let sadface: Image = new Image("sadface", "assets/textures/sadface.png");
         let happyface: Image = new Image("happyface", "assets/textures/happyface.png");
-        // scale them so they're square. no, I do not, in fact, know why
-        sadface.scaleY = 0.8;
-        happyface.scaleY = 0.8;
-
-
-        // spacer as a ugly workaround for stackpanel being a POS
-        const spacer1 = new TextBlock("first spacer");
-        spacer1.heightInPixels = 50;
 
         // create slider
         const slider: Slider = new Slider();
@@ -106,24 +82,21 @@ export class UI
         
         // create header text to display slider value
         const sliderHeader: TextBlock = new TextBlock("DS score slider value");
-        sliderHeader.heightInPixels = 150;
+        sliderHeader.heightInPixels = 75;
         sliderHeader.scaleY = textScaleY;
         sliderHeader.text = slider.value.toString();
         sliderHeader.fontSize = fontSize;
+        sliderHeader.textVerticalAlignment = Control.VERTICAL_ALIGNMENT_TOP;
 
         slider.onValueChangedObservable.add(function(value) {
             sliderHeader.text = value.toString();
             rating = value;
         });
 
-        // create spacer to insert between slider and submit button to prevent accidental submission
-        const spacer: TextBlock = new TextBlock("DS score spacer");
-        spacer.height = "75px";
-
         // create submission button
         const submitBtn: Button = Button.CreateSimpleButton("submit button", "Submit");
         submitBtn.widthInPixels = 300;
-        submitBtn.heightInPixels = 80;
+        submitBtn.heightInPixels = 100;
         submitBtn.background = "white";
         submitBtn.scaleY = textScaleY;
         submitBtn.fontSize = fontSize;
@@ -135,18 +108,34 @@ export class UI
             dsPlane.isVisible = false;
         });
 
-        // add controls to grid from left to right
-        grid.addControl(sadface, 0, 0);
-        grid.addControl(slider, 0, 1);
-        grid.addControl(happyface, 0, 2);
+        // grid for aligning happy/sad faces with slider
+        const grid = new Grid("DS score slider grid");
+        grid.background = "white";
+        grid.alpha = 0.75;
+        grid.widthInPixels = 890;
+        grid.heightInPixels = 800;
+        grid.addColumnDefinition(20, true);     // extra column for padding b/c .padding doesn't seem to work
+        grid.addColumnDefinition(50, true);     // sad face
+        grid.addColumnDefinition(750, true);    // textblock, slider, etc
+        grid.addColumnDefinition(50, true);     // happy face
+        grid.addColumnDefinition(20, true);     // extra column for padding b/c .padding doesn't seem to work
+        grid.addRowDefinition(20, true);        // extra column for padding b/c .padding doesn't seem to work
+        grid.addRowDefinition(450, true);       // text block
+        grid.addRowDefinition(75, true);        // slider header text
+        grid.addRowDefinition(50, true);        // slider
+        // empty row between slider and submit button to prevent accidental submission
+        grid.addRowDefinition(75, true);
+        grid.addRowDefinition(100, true);       // submit button
+        grid.addRowDefinition(30, true);     // extra column for padding b/c .padding doesn't seem to work
 
-        // add controls in the order you'd like to see it from top to bottom
-        stackPanel.addControl(text);
-        stackPanel.addControl(spacer1);
-        stackPanel.addControl(sliderHeader);
-        stackPanel.addControl(grid);
-        stackPanel.addControl(spacer);
-        stackPanel.addControl(submitBtn);
+        // add controls to grid from top to bottom, left to right
+        dsPlaneADT.addControl(grid);
+        grid.addControl(text, 1, 2);
+        grid.addControl(sliderHeader, 2, 2);
+        grid.addControl(sadface, 3, 1);
+        grid.addControl(slider, 3, 2);
+        grid.addControl(happyface, 3, 3);
+        grid.addControl(submitBtn, 5, 2);
 
         return dsPlane;
     }

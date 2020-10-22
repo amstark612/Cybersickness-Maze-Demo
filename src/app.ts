@@ -1,14 +1,9 @@
-import { Color4, Engine, FreeCamera, Scene, StandardMaterial } from "@babylonjs/core";
-import { WebXRCamera, WebXRInputSource } from "@babylonjs/core/XR";
-import { Mesh, MeshBuilder, TransformNode } from "@babylonjs/core/Meshes";
+import { Color4, Engine, FreeCamera, Scene } from "@babylonjs/core";
+import { WebXRInputSource } from "@babylonjs/core/XR";
+import { Mesh, MeshBuilder } from "@babylonjs/core/Meshes";
 import { ActionManager, ExecuteCodeAction } from "@babylonjs/core";
 import { Vector3 } from "@babylonjs/core/Maths/math";
-
-import { GUI3DManager } from "@babylonjs/gui/3D/gui3DManager";
-import { Button3D, Control3D, HolographicButton, PlanePanel } from "@babylonjs/gui/3D";
-import { AdvancedDynamicTexture } from "@babylonjs/gui/2D";
-import { Color3 } from "@babylonjs/core";
-import { Button, Control, Grid, RadioButton, Rectangle, Slider, StackPanel, TextBlock } from "@babylonjs/gui/2D/controls";
+import { Button } from "@babylonjs/gui/2D/controls";
 
 // custom classes
 import { Environment } from "./environment";
@@ -19,8 +14,7 @@ import { InputManager } from "./inputManager";
 // side effects
 import "@babylonjs/core/Debug/debugLayer";
 import "@babylonjs/inspector";
-import { TextBlockPropertyGridComponent } from "@babylonjs/inspector/components/actionTabs/tabs/propertyGrids/gui/textBlockPropertyGridComponent";
-// import "@babylonjs/loaders/glTF";
+
 
 enum State { START = 0, PRETEST = 1, MAIN = 2, POSTTEST = 3 }
 
@@ -246,8 +240,10 @@ class App
         const dsPrompt: Mesh = playerUI.createDSPrompt(scene);
 
 
-
         // a bunch of temporary stuff please clean me up
+
+        dsPrompt.isVisible = true;
+        dsPrompt.position.set(this._playerController.collider.position.x, 1.6, this._playerController.collider.position.z + 2);
 
         // Our built-in 'sphere' shape.
         let sphere = MeshBuilder.CreateSphere("sphere", { diameterX: 0.3, diameterY: 0.3, diameterZ: 0.1, segments: 32 }, scene);
@@ -267,6 +263,7 @@ class App
                 () => 
                 {
                     //  this._playerController.enableLocomotion = false;
+                    // write function here that disables locomotion AND listens for event emitter
                     let position: Vector3 = this._playerController.collider.position;
                     dsPrompt.position.set(position.x, 1.5, position.z + 1.5);
                     dsPrompt.isVisible = true;
