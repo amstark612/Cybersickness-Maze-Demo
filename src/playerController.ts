@@ -9,14 +9,13 @@ export class PlayerController
     public xrHelper: WebXRDefaultExperience;
     public xrCamera: WebXRCamera;
     public collider: Mesh;
-    public enableLocomotion: boolean = true;
 
     private _scene: Scene;
 
     // locomotion stuff
     private static readonly SPEED: number = 0.05;
     private _moveDirection: Vector3 = Vector3.Zero();
-    public inputManager: InputManager;
+    private _inputManager: InputManager;
 
     constructor(scene: Scene, canvas: HTMLCanvasElement)
     {
@@ -69,14 +68,13 @@ export class PlayerController
 
     public updateMovement() : void
     {
-
-        if (this.inputManager?.z && this.enableLocomotion)
+        if (this._inputManager?.z)
         {
             // get player/camera's forward vector
             let forward: Vector3 = this.xrCamera.getDirection(Vector3.Forward());
 
             // +1 = forwards, -1 = backwards
-            let input: number = -(this.inputManager.z/Math.abs(this.inputManager.z));
+            let input: number = -(this._inputManager.z/Math.abs(this._inputManager.z));
 
             // multiply player's forward vector by direction and speed
             let direction: Vector3 = forward.scaleInPlace(input * PlayerController.SPEED);
@@ -93,5 +91,10 @@ export class PlayerController
             // this is a hacky workaround for the collider because the WebXRCamera collider doesn't DO anything
             this.collider.position = this.xrCamera.position;
         }
+    }
+
+    public set inputManager(input: InputManager)
+    {
+        this._inputManager = input;
     }
 }

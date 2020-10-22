@@ -119,7 +119,7 @@ export class Environment
                 },
                 () =>
                 {
-                    coin.isVisible = false;
+                    coin.dispose();
                 }
             )
         )

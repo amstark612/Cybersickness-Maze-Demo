@@ -9,6 +9,7 @@ export class InputManager
     private _rightController: WebXRInputSource | null;
     private _primaryController: WebXRInputSource | null;
 
+    public gamePaused: boolean = false;
     public z: number = 0;           // thumbstick up/down value for z-axis movement
 
     constructor(scene: Scene, leftController: WebXRInputSource, rightController: WebXRInputSource)

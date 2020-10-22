@@ -16,7 +16,7 @@ import "@babylonjs/core/Debug/debugLayer";
 import "@babylonjs/inspector";
 
 
-enum State { START = 0, PRETEST = 1, MAIN = 2, POSTTEST = 3 }
+enum State { START = 0, MAIN = 1, POSTTEST = 2 }
 
 class App
 {
@@ -28,10 +28,10 @@ class App
     // scene stuff
     private _state: number = 0;
     private _mainScene: Scene;
-    private _pretestScene: Scene;
 
     // game state stuff
     private _environment: Environment;
+    private _UI: UI;
 
     // player stuff
     private _inputManager: InputManager;
@@ -60,9 +60,6 @@ class App
                 case State.START:
                     this._scene.render();
                     break;
-                case State.PRETEST:
-                    this._scene.render();
-                    break;
                 case State.MAIN:
                     this._update();
                     this._scene.render();
@@ -84,13 +81,17 @@ class App
     private _update() : void
     {
         this._inputManager?.processControllerInput();
-        this._playerController?.updateMovement();
+
+        if (!this._UI.gamePaused)
+        {
+            this._playerController?.updateMovement();
+        }
     }
 
     private async _setUpGame() : Promise<void>
     {
-        let leftController: WebXRInputSource;
-        let rightController: WebXRInputSource;
+        // let leftController: WebXRInputSource;
+        // let rightController: WebXRInputSource;
 
         // create scene
         const scene: Scene = new Scene(this._engine);
@@ -102,29 +103,25 @@ class App
                 // set up (backup) non-VR camera & collider
                 this._playerController = new PlayerController(scene, this._canvas);
         });
+    }
 
-        // set up XR camera, collider, controllers
-        await this._playerController.loadXR().then(res => {
-                this._playerController.xrHelper.input.onControllerAddedObservable.add((inputSource) => {
-                    if (inputSource.uniqueId.endsWith("left"))
-                    {
-                        leftController = inputSource;
-                    }
-                    else
-                    {
-                        rightController = inputSource;
-                    }
+    private _setUpXR(inputSource: WebXRInputSource) : void
+    {
+        let leftController: WebXRInputSource;
+        let rightController: WebXRInputSource;
 
-                    // create input manager
-                    this._inputManager = new InputManager(this._scene, leftController, rightController);
+        if (inputSource.uniqueId.endsWith("left"))
+        {
+            leftController = inputSource;
+        }
+        else
+        {
+            rightController = inputSource;
+        }
 
-                    // this might be a hacky workaround for a circular dependency...? ask Courtney?
-                    this._playerController.inputManager = this._inputManager;
-
-                    // make it rain coins
-                    this._environment.generateCoins(this._playerController.collider);
-                });
-        });
+        // create input manager
+        this._inputManager = new InputManager(this._scene, leftController, rightController);
+        this._playerController.inputManager = this._inputManager;
     }
 
     private async _goToStart() : Promise<void>
@@ -147,15 +144,16 @@ class App
         // print instructions
         guiMenu.createMsg("Some instructions and stuff");
 
-        // create a button
-        const startBtn: Button = guiMenu.createBtn("NEXT");
+        await this._setUpGame().then(() => {
+            // create a button
+            const startBtn: Button = guiMenu.createBtn("NEXT");
 
-        startBtn.onPointerDownObservable.add(() =>
-        {
-            this._goToPretest();
-            scene.detachControl();
-        })
-
+            startBtn.onPointerDownObservable.add(() =>
+            {
+                this._goToGame();
+                scene.detachControl();
+            });
+        });
 
         // after scene loads
         await scene.whenReadyAsync();
@@ -165,59 +163,6 @@ class App
         this._scene.dispose();
         this._scene = scene;
         this._state = State.START;
-    }
-
-    private async _goToPretest() : Promise<void>
-    {
-        // display loading screen while loading
-        this._engine.displayLoadingUI();
-
-        // create scene and camera
-        this._scene.detachControl();
-        this._pretestScene = new Scene(this._engine);
-        // this._loadScene.clearColor = new Color4(0, 0, 0, 1);
-        const camera: FreeCamera = new FreeCamera("camera1", Vector3.Zero(), this._pretestScene);
-        camera.setTarget(Vector3.Zero());
-
-
-        // create fullscreen UI for GUI elements
-        const loadingUI: UI = new UI("Pretest UI");
-
-
-
-
-        // ask user for handedness here
-
-
-
-
-        // create a button
-        const nextBtn: Button = loadingUI.createBtn("NEXT");
-
-        nextBtn.onPointerDownObservable.add(() =>
-        {
-            // loadingUI.submitSSQ();
-            this._goToGame();
-        })
-
-
-        // after scene loads
-        await this._pretestScene.whenReadyAsync();
-        this._engine.hideLoadingUI();
-
-        // set current state to start state
-        this._scene.dispose();
-        this._scene = this._pretestScene;
-        this._state = State.PRETEST;
-
-        // start loading and setting up game during this scene
-        let finishedLoading: Boolean = false;
-        await this._setUpGame().then(res => {
-            finishedLoading = true;
-            // this._goToGame();
-        });
-
-        // this._scene.debugLayer.show();
     }
 
     private async _goToGame() : Promise<void>
@@ -230,20 +175,35 @@ class App
         this._scene.dispose();
         this._state = State.MAIN;
         this._scene = scene;
-        this._engine.hideLoadingUI();
 
-        // reattach control now that scene is ready
-        this._scene.attachControl();
+        // set up XR camera, collider, controllers
+        await this._playerController.loadXR().then(() => {
+            this._playerController.xrHelper.input.onControllerAddedObservable.add((inputSource) => {
+                this._setUpXR(inputSource);
+
+                // make it rain coins now that we have a player collider
+                this._environment.generateCoins(this._playerController.collider);
+
+                // hide loading screen and reattach control now that scene is ready
+                this._engine.hideLoadingUI();
+                this._scene.attachControl();
+            });
+        });
 
         // create discomfort score prompt
-        const playerUI: UI = new UI("Player UI");
-        const dsPrompt: Mesh = playerUI.createDSPrompt(scene);
+        this._UI = new UI("Player UI");
+        this._UI.createDSPrompt(scene);
+
+        // get & set handedness
+        const handednessPrompt: Mesh = this._UI.createHandednessPrompt(scene);
+        
+        
+        handednessPrompt.position.set(0, 1.6, 1.5);
+
 
 
         // a bunch of temporary stuff please clean me up
 
-        dsPrompt.isVisible = true;
-        dsPrompt.position.set(this._playerController.collider.position.x, 1.6, this._playerController.collider.position.z + 2);
 
         // Our built-in 'sphere' shape.
         let sphere = MeshBuilder.CreateSphere("sphere", { diameterX: 0.3, diameterY: 0.3, diameterZ: 0.1, segments: 32 }, scene);
@@ -262,11 +222,11 @@ class App
                 },
                 () => 
                 {
-                    //  this._playerController.enableLocomotion = false;
-                    // write function here that disables locomotion AND listens for event emitter
                     let position: Vector3 = this._playerController.collider.position;
-                    dsPrompt.position.set(position.x, 1.5, position.z + 1.5);
-                    dsPrompt.isVisible = true;
+                    this._UI.DSpopup.position.set(position.x, 1.6, position.z + 1.5);
+                    this._UI.DSpopup.isVisible = true;
+                    this._UI.gamePaused = true;
+                    sphere.dispose();
                 }
             )
         );

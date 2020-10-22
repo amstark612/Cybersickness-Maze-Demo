@@ -1,24 +1,28 @@
 import { Mesh, MeshBuilder, Scene } from "@babylonjs/core";
 import { AdvancedDynamicTexture } from "@babylonjs/gui/2D";
-import { Button, Control, Grid, Image, Slider, TextBlock } from "@babylonjs/gui/2D/controls";
+import { Button, Control, Grid, Image, RadioButton, Rectangle, Slider, StackPanel, TextBlock } from "@babylonjs/gui/2D/controls";
 
 export class UI
 {
-    private _menu: AdvancedDynamicTexture;
+    private _2Dmenu: AdvancedDynamicTexture;
+    public gamePaused: boolean = false;
 
+    public DSpopup: Mesh;
+
+    // discomfort score stuff
     private static readonly DSmin: number = 0;
     private static readonly DSmax: number = 10;
+    private static readonly DSprompt: string = "discomfort score prompt etc";
+
+    // font
+    private static readonly fontSize: number = 36;
+    private static readonly textScaleY: number = 1.3; // for scaling text in 3D; looks weird otherwise for some unknown reason
 
     constructor(name: string)
     {
         // create fullscreen UI for GUI elements
-        this._menu = AdvancedDynamicTexture.CreateFullscreenUI(name);
-        this._menu.idealHeight = 720;
-    }
-
-    private _getMenu() : AdvancedDynamicTexture
-    {
-        return this._menu;
+        this._2Dmenu = AdvancedDynamicTexture.CreateFullscreenUI(name);
+        this._2Dmenu.idealHeight = 720;
     }
 
     public createMsg(message: string) : void
@@ -27,8 +31,8 @@ export class UI
        const textBox: TextBlock = new TextBlock("Text Box");
        textBox.text = message;
        textBox.color = "black";
-       textBox.fontSize = 48;
-       this._menu.addControl(textBox);
+       textBox.fontSize = UI.fontSize;
+       this._2Dmenu.addControl(textBox);
     }
 
     public createBtn(name: string) : Button
@@ -41,18 +45,16 @@ export class UI
         btn.top = "-14px";
         btn.thickness = 0;
         btn.verticalAlignment = Control.VERTICAL_ALIGNMENT_BOTTOM;
-        this._menu.addControl(btn);
+        this._2Dmenu.addControl(btn);
 
         return btn;
     }
 
-    public createDSPrompt(scene: Scene) : Mesh
+    public createDSPrompt(scene: Scene) : void
     {
-        const fontSize: number = 40;
-        const textScaleY: number = 1.3; // must scale text in 3D; looks weird otherwise for some unknown reason
-
-        const dsPlane: Mesh = MeshBuilder.CreatePlane("dsPrompt", { width: 1.5, height: 1 }, scene);
+        const dsPlane: Mesh = MeshBuilder.CreatePlane("DS Prompt", { width: 1.5, height: 1 }, scene);
         dsPlane.isVisible = false;
+        this.DSpopup = dsPlane;
 
         // do this so it shows up right in 3D. don't ask me why because I don't know. DON'T AT ME.
         const dsPlaneADT: AdvancedDynamicTexture = AdvancedDynamicTexture.CreateForMesh(dsPlane);
@@ -63,8 +65,8 @@ export class UI
         text.textWrapping = true;
         text.widthInPixels = 750;
         text.heightInPixels = 450;
-        text.scaleY = textScaleY;  // text looks weird in 3D otherwise for some unknown reason
-        text.fontSize = fontSize;
+        text.scaleY = UI.textScaleY;  // text looks weird in 3D otherwise for some unknown reason
+        text.fontSize = UI.fontSize;
 
         // load happy and sad faces
         let sadface: Image = new Image("sadface", "assets/textures/sadface.png");
@@ -83,12 +85,12 @@ export class UI
         // create header text to display slider value
         const sliderHeader: TextBlock = new TextBlock("DS score slider value");
         sliderHeader.heightInPixels = 75;
-        sliderHeader.scaleY = textScaleY;
+        sliderHeader.scaleY = UI.textScaleY;
         sliderHeader.text = slider.value.toString();
-        sliderHeader.fontSize = fontSize;
+        sliderHeader.fontSize = UI.fontSize;
         sliderHeader.textVerticalAlignment = Control.VERTICAL_ALIGNMENT_TOP;
 
-        slider.onValueChangedObservable.add(function(value) {
+        slider.onValueChangedObservable.add((value) => {
             sliderHeader.text = value.toString();
             rating = value;
         });
@@ -98,14 +100,16 @@ export class UI
         submitBtn.widthInPixels = 300;
         submitBtn.heightInPixels = 100;
         submitBtn.background = "white";
-        submitBtn.scaleY = textScaleY;
-        submitBtn.fontSize = fontSize;
+        submitBtn.scaleY = UI.textScaleY;
+        submitBtn.fontSize = UI.fontSize;
         submitBtn.thickness = 0;    // border
         submitBtn.textBlock.textVerticalAlignment = Control.VERTICAL_ALIGNMENT_TOP;
 
-        submitBtn.onPointerDownObservable.add(function(value) {
+        submitBtn.onPointerDownObservable.add(() => {
             console.log("Discomfort score: " + rating);
+            rating = 5;     // reset rating to 5 for next time
             dsPlane.isVisible = false;
+            this.gamePaused = false;
         });
 
         // grid for aligning happy/sad faces with slider
@@ -136,9 +140,108 @@ export class UI
         grid.addControl(slider, 3, 2);
         grid.addControl(happyface, 3, 3);
         grid.addControl(submitBtn, 5, 2);
-
-        return dsPlane;
     }
 
+    public createHandednessPrompt(scene: Scene) : Mesh
+    {
+        let rightHanded: boolean = true;
 
+        const plane: Mesh = MeshBuilder.CreatePlane("Handedness prompt", { width: 0.75, height: 0.75 }, scene);
+
+        // do this so it shows up right in 3D. don't ask me why because I don't know. DON'T AT ME.
+        const planeADT: AdvancedDynamicTexture = AdvancedDynamicTexture.CreateForMesh(plane);
+
+        // create stack panel for organizing things vertically
+        // children MUST have height defined in pixels!!!!
+        const stackPanel: StackPanel = new StackPanel("Handedness stack panel");
+
+        // grid for radio buttons
+        const grid = new Grid("Handedness grid");
+        grid.widthInPixels = 700;
+        grid.heightInPixels = 100;
+        grid.addColumnDefinition(350, true);
+        grid.addColumnDefinition(350, true);
+
+        // create rectangle for white background
+        const background: Rectangle = new Rectangle("Handedness background");
+        background.background = "white";
+        background.alpha = 0.75;
+        background.heightInPixels = 500;
+        background.width = 0.75;
+
+        // create prompt text
+        const text: TextBlock = new TextBlock("Handedness prompt");
+        text.text = "Are you left- or right-handed?";
+        text.textWrapping = true;
+        text.widthInPixels = 500;
+        text.heightInPixels = 200;
+        text.scaleY = UI.textScaleY;  // text looks weird in 3D otherwise for some unknown reason
+        text.fontSize = UI.fontSize;
+
+        // create radio buttons
+        const leftBtn = this._createRadioBtn("Left", "Handedness");
+        const rightBtn = this._createRadioBtn("Right", "Handedness");
+        const leftHeader = Control.AddHeader(leftBtn, "Left-handed", "150px", { isHorizontal: true, controlFirst: true });
+        const rightHeader = Control.AddHeader(rightBtn, "Right-handed", "150px", { isHorizontal: true, controlFirst: true });
+        leftBtn.onIsCheckedChangedObservable.add(() => {
+            rightHanded = false;
+        });
+        rightBtn.onIsCheckedChangedObservable.add(() => {
+            rightHanded = true;
+        });
+
+        // create submission button
+        const submitBtn: Button = Button.CreateSimpleButton("submit button", "Submit");
+        submitBtn.widthInPixels = 300;
+        submitBtn.heightInPixels = 100;
+        submitBtn.background = "white";
+        submitBtn.scaleY = UI.textScaleY;
+        submitBtn.fontSize = UI.fontSize;
+        submitBtn.thickness = 0;    // border
+        submitBtn.textBlock.textVerticalAlignment = Control.VERTICAL_ALIGNMENT_TOP;
+
+        // how to pass this back to main...?
+        submitBtn.onPointerDownObservable.add(() => {
+            plane.isVisible = false;
+            return rightHanded;
+        });
+
+        // attach controls
+        planeADT.addControl(background);
+        planeADT.addControl(stackPanel);
+        stackPanel.addControl(text);
+        stackPanel.addControl(grid);
+        grid.addControl(leftHeader, 0, 0);
+        grid.addControl(rightHeader, 0, 1);
+        stackPanel.addControl(submitBtn);
+
+        return plane;
+    }
+
+    // private _createRadioBtn(text: string, group: string) : RadioButton
+    // {
+    //     const button: RadioButton = new RadioButton(text);
+    //     button.group = group;
+    //     button.widthInPixels = 20;
+    //     button.heightInPixels = 20;
+    //     button.color = "black";
+    //     button.background = "white";
+
+    //     const header = Control.AddHeader(button, text, "80px", { isHorizontal: true, controlFirst: true });
+    //     header.heightInPixels = 50;
+
+    //     return button;
+    // }
+
+    private _createRadioBtn(text: string, group: string) : RadioButton
+    {
+        const button: RadioButton = new RadioButton(text);
+        button.group = group;
+        button.widthInPixels = 30;
+        button.heightInPixels = 30;
+        button.color = "black";
+        button.background = "white";
+
+        return button;
+    }
 }
