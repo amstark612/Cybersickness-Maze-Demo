@@ -31,7 +31,7 @@ class App
 
     // game state stuff
     private _environment: Environment;
-    private _UI: UI;
+    private _UI: UI = null;
     private _menu: Mesh;
 
     // player stuff
@@ -62,9 +62,9 @@ class App
                     this._scene.render();
                     break;
                 case State.SETUP:
-                    if (!this._UI?.gamePaused)
+                    if (this._UI && !this._UI.gamePaused)
                     {
-                        this._inputManager.setPrimaryController(this._UI.handedness);
+                        this._inputManager?.setPrimaryController(this._UI.handedness);
                         this._state = State.MAIN;
                     }
                     this._scene.render();
@@ -89,7 +89,15 @@ class App
 
     private _update() : void
     {
-        this._inputManager?.processControllerInput();
+        this._inputManager.processControllerInput();
+
+        if (this._inputManager.callMenu)
+        {
+            this._UI.gamePaused = true;
+            let position: Vector3 = this._playerController.collider.position;
+            this._menu.position.set(position.x, 1.6, position.y + 1.5);
+            this._menu.isVisible = true;
+        }
 
         if (!this._UI.gamePaused)
         {

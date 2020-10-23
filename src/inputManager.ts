@@ -9,7 +9,8 @@ export class InputManager
     private _rightController: WebXRInputSource | null;
     private _primaryController: WebXRInputSource;
 
-    public z: number = 0;           // thumbstick up/down value for z-axis movement
+    public z: number = 0;               // thumbstick up/down value for z-axis movement
+    public callMenu: boolean = false;   // for in-game menu
 
     constructor(scene: Scene, leftController: WebXRInputSource, rightController: WebXRInputSource)
     {
@@ -27,6 +28,7 @@ export class InputManager
     {
         this._onLeftTrigger(this._leftController?.motionController?.getComponent("xr-standard-trigger"));
         this._onRightTrigger(this._rightController?.motionController?.getComponent("xr-standard-trigger"));
+        this._onLeftX(this._leftController?.motionController?.getComponent("x-button"));
         this._onRightA(this._rightController?.motionController?.getComponent("a-button"));
 
         this.z = this._onPrimaryThumbstick(this._primaryController?.motionController?.getComponent("xr-standard-thumbstick"));
@@ -39,17 +41,17 @@ export class InputManager
 
     private _onRightTrigger(component?: WebXRControllerComponent) : void
     {
-        if(component?.changes.pressed)
-        {
-            if(component?.pressed)
-            {
-                console.log("right squeeze pressed");
-            }
-            else
-            {
-                console.log("right squeeze released");
-            }
-        }  
+        // if(component?.changes.pressed)
+        // {
+        //     if(component?.pressed)
+        //     {
+        //         console.log("right squeeze pressed");
+        //     }
+        //     else
+        //     {
+        //         console.log("right squeeze released");
+        //     }
+        // }  
     }
 
     private _onPrimaryThumbstick(component?: WebXRControllerComponent) : number
@@ -57,11 +59,26 @@ export class InputManager
         return component?.axes.y;
     }
 
-    private _onRightA(component?: WebXRControllerComponent)
+    private _onLeftX(component? : WebXRControllerComponent) : void
+    {
+        if (component?.pressed)
+        {
+            this.callMenu = !this.callMenu ? true : false;
+        }
+    }
+
+    private _onRightA(component?: WebXRControllerComponent) : void
     {  
-            if(component?.pressed)
-            {
-                console.log("right A pressed");
-            } 
+        if (component?.hasChanges && component?.pressed)
+        {
+            this.callMenu = true;          
+        }
+
+        // if(component?.pressed)
+        // {
+        //     this.callMenu = !this.callMenu ? true : false;
+        //     console.log("pressed a");
+        //     console.log(this.callMenu);
+        // } 
     }
 }

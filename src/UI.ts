@@ -6,7 +6,7 @@ export class UI
 {
     private _2Dmenu: AdvancedDynamicTexture;
     
-    public gamePaused: boolean = false;
+    public gamePaused: boolean = true;  // game begins after getting handedness
     public gameover: boolean = false;
     public handedness: boolean;     // false for left, true for right
     
@@ -58,7 +58,7 @@ export class UI
 
     public createPauseMenu() : Mesh
     {
-        const plane: Mesh = MeshBuilder.CreatePlane("Pause Menu", { width: 1, height: 1 });
+        const plane: Mesh = MeshBuilder.CreatePlane("Pause Menu", { width: 1, height: 0.5 });
         plane.isVisible = false;
         this.pauseMenu = plane;
 
@@ -69,7 +69,7 @@ export class UI
         grid.background = "white";
         grid.alpha = 0.75;
         grid.width = 1;
-        grid.height = 1;
+        grid.height = 0.5;
         grid.addRowDefinition(20, true);      // extra column for padding b/c .padding doesn't seem to work
         grid.addRowDefinition(100, true);     // return to game button
         grid.addRowDefinition(20, true);      // extra column for padding b/c .padding doesn't seem to work
@@ -77,18 +77,19 @@ export class UI
         grid.addRowDefinition(20, true);      // extra column for padding b/c .padding doesn't seem to work
 
         // create return to game button
-        const returnBtn: Button = Button.CreateSimpleButton("return button", "Return to game");
-        returnBtn.widthInPixels = 400;
-        returnBtn.heightInPixels = 100;
-        returnBtn.background = "white";
-        returnBtn.scaleY = UI.textScaleY;
-        returnBtn.fontSize = UI.fontSize;
-        returnBtn.thickness = 0;    // border
-        returnBtn.textBlock.textVerticalAlignment = Control.VERTICAL_ALIGNMENT_TOP;
+        const resumeBtn: Button = Button.CreateSimpleButton("resume button", "Resume");
+        resumeBtn.widthInPixels = 400;
+        resumeBtn.heightInPixels = 100;
+        resumeBtn.background = "white";
+        resumeBtn.scaleY = UI.textScaleY;
+        resumeBtn.fontSize = UI.fontSize;
+        resumeBtn.thickness = 0;    // border
+        resumeBtn.textBlock.textVerticalAlignment = Control.VERTICAL_ALIGNMENT_TOP;
 
-        returnBtn.onPointerDownObservable.add(() => {
+        resumeBtn.onPointerDownObservable.add(() => {
             this.gamePaused = false;
             plane.isVisible = false;
+            console.log("should be resuming game");
         });
 
         // create exit button
@@ -108,8 +109,8 @@ export class UI
 
         // attach controls
         planeADT.addControl(grid);
-        grid.addControl(exitBtn, 1, 0);
-        grid.addControl(returnBtn, 3, 0);
+        grid.addControl(resumeBtn, 1, 0);
+        grid.addControl(exitBtn, 3, 0);
 
         return plane;
     }
@@ -209,8 +210,6 @@ export class UI
     public getHandedness() : void
     {
         let rightHanded: boolean;
-
-        this.gamePaused = true;
 
         const plane: Mesh = MeshBuilder.CreatePlane("Handedness prompt", { width: 1.5, height: 1 });
         plane.position.set(0, 1.6, 2);
