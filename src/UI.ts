@@ -5,8 +5,13 @@ import { Button, Control, Grid, Image, RadioButton, Rectangle, Slider, StackPane
 export class UI
 {
     private _2Dmenu: AdvancedDynamicTexture;
+    
     public gamePaused: boolean = false;
-
+    public gameover: boolean = false;
+    public handedness: boolean;     // false for left, true for right
+    
+    // menus
+    public pauseMenu: Mesh;
     public DSpopup: Mesh;
 
     // discomfort score stuff
@@ -23,6 +28,7 @@ export class UI
         // create fullscreen UI for GUI elements
         this._2Dmenu = AdvancedDynamicTexture.CreateFullscreenUI(name);
         this._2Dmenu.idealHeight = 720;
+
     }
 
     public createMsg(message: string) : void
@@ -50,14 +56,72 @@ export class UI
         return btn;
     }
 
-    public createDSPrompt(scene: Scene) : void
+    public createPauseMenu() : Mesh
     {
-        const dsPlane: Mesh = MeshBuilder.CreatePlane("DS Prompt", { width: 1.5, height: 1 }, scene);
-        dsPlane.isVisible = false;
-        this.DSpopup = dsPlane;
+        const plane: Mesh = MeshBuilder.CreatePlane("Pause Menu", { width: 1, height: 1 });
+        plane.isVisible = false;
+        this.pauseMenu = plane;
+
+        const planeADT: AdvancedDynamicTexture = AdvancedDynamicTexture.CreateForMesh(plane);
+
+        // grid for organization
+        const grid = new Grid("DS score slider grid");
+        grid.background = "white";
+        grid.alpha = 0.75;
+        grid.width = 1;
+        grid.height = 1;
+        grid.addRowDefinition(20, true);      // extra column for padding b/c .padding doesn't seem to work
+        grid.addRowDefinition(100, true);     // return to game button
+        grid.addRowDefinition(20, true);      // extra column for padding b/c .padding doesn't seem to work
+        grid.addRowDefinition(100, true);     // exit game button
+        grid.addRowDefinition(20, true);      // extra column for padding b/c .padding doesn't seem to work
+
+        // create return to game button
+        const returnBtn: Button = Button.CreateSimpleButton("return button", "Return to game");
+        returnBtn.widthInPixels = 400;
+        returnBtn.heightInPixels = 100;
+        returnBtn.background = "white";
+        returnBtn.scaleY = UI.textScaleY;
+        returnBtn.fontSize = UI.fontSize;
+        returnBtn.thickness = 0;    // border
+        returnBtn.textBlock.textVerticalAlignment = Control.VERTICAL_ALIGNMENT_TOP;
+
+        returnBtn.onPointerDownObservable.add(() => {
+            this.gamePaused = false;
+            plane.isVisible = false;
+        });
+
+        // create exit button
+        const exitBtn: Button = Button.CreateSimpleButton("exit button", "End Game");
+        exitBtn.widthInPixels = 400;
+        exitBtn.heightInPixels = 100;
+        exitBtn.background = "white";
+        exitBtn.scaleY = UI.textScaleY;
+        exitBtn.fontSize = UI.fontSize;
+        exitBtn.thickness = 0;    // border
+        exitBtn.textBlock.textVerticalAlignment = Control.VERTICAL_ALIGNMENT_TOP;
+
+        exitBtn.onPointerDownObservable.add(() => {
+            this.gameover = true;
+            plane.dispose();
+        });
+
+        // attach controls
+        planeADT.addControl(grid);
+        grid.addControl(exitBtn, 1, 0);
+        grid.addControl(returnBtn, 3, 0);
+
+        return plane;
+    }
+
+    public createDSPrompt() : void
+    {
+        const plane: Mesh = MeshBuilder.CreatePlane("DS Prompt", { width: 1.5, height: 1 });
+        plane.isVisible = false;
+        this.DSpopup = plane;
 
         // do this so it shows up right in 3D. don't ask me why because I don't know. DON'T AT ME.
-        const dsPlaneADT: AdvancedDynamicTexture = AdvancedDynamicTexture.CreateForMesh(dsPlane);
+        const planeADT: AdvancedDynamicTexture = AdvancedDynamicTexture.CreateForMesh(plane);
 
         // create prompt text
         const text: TextBlock = new TextBlock("DS score prompt");
@@ -108,7 +172,7 @@ export class UI
         submitBtn.onPointerDownObservable.add(() => {
             console.log("Discomfort score: " + rating);
             rating = 5;     // reset rating to 5 for next time
-            dsPlane.isVisible = false;
+            plane.isVisible = false;
             this.gamePaused = false;
         });
 
@@ -133,7 +197,7 @@ export class UI
         grid.addRowDefinition(30, true);     // extra column for padding b/c .padding doesn't seem to work
 
         // add controls to grid from top to bottom, left to right
-        dsPlaneADT.addControl(grid);
+        planeADT.addControl(grid);
         grid.addControl(text, 1, 2);
         grid.addControl(sliderHeader, 2, 2);
         grid.addControl(sadface, 3, 1);
@@ -142,11 +206,14 @@ export class UI
         grid.addControl(submitBtn, 5, 2);
     }
 
-    public createHandednessPrompt(scene: Scene) : Mesh
+    public getHandedness() : void
     {
-        let rightHanded: boolean = true;
+        let rightHanded: boolean;
 
-        const plane: Mesh = MeshBuilder.CreatePlane("Handedness prompt", { width: 0.75, height: 0.75 }, scene);
+        this.gamePaused = true;
+
+        const plane: Mesh = MeshBuilder.CreatePlane("Handedness prompt", { width: 1.5, height: 1 });
+        plane.position.set(0, 1.6, 2);
 
         // do this so it shows up right in 3D. don't ask me why because I don't know. DON'T AT ME.
         const planeADT: AdvancedDynamicTexture = AdvancedDynamicTexture.CreateForMesh(plane);
@@ -157,10 +224,10 @@ export class UI
 
         // grid for radio buttons
         const grid = new Grid("Handedness grid");
-        grid.widthInPixels = 700;
+        grid.widthInPixels = 800;
         grid.heightInPixels = 100;
-        grid.addColumnDefinition(350, true);
-        grid.addColumnDefinition(350, true);
+        grid.addColumnDefinition(400, true);
+        grid.addColumnDefinition(400, true);
 
         // create rectangle for white background
         const background: Rectangle = new Rectangle("Handedness background");
@@ -200,10 +267,10 @@ export class UI
         submitBtn.thickness = 0;    // border
         submitBtn.textBlock.textVerticalAlignment = Control.VERTICAL_ALIGNMENT_TOP;
 
-        // how to pass this back to main...?
         submitBtn.onPointerDownObservable.add(() => {
-            plane.isVisible = false;
-            return rightHanded;
+            this.handedness = rightHanded;
+            this.gamePaused = false;
+            plane.dispose();
         });
 
         // attach controls
@@ -214,8 +281,6 @@ export class UI
         grid.addControl(leftHeader, 0, 0);
         grid.addControl(rightHeader, 0, 1);
         stackPanel.addControl(submitBtn);
-
-        return plane;
     }
 
     // private _createRadioBtn(text: string, group: string) : RadioButton

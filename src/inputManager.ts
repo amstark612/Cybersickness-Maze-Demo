@@ -7,25 +7,20 @@ export class InputManager
 
     private _leftController: WebXRInputSource | null;
     private _rightController: WebXRInputSource | null;
-    private _primaryController: WebXRInputSource | null;
+    private _primaryController: WebXRInputSource;
 
-    public gamePaused: boolean = false;
     public z: number = 0;           // thumbstick up/down value for z-axis movement
 
     constructor(scene: Scene, leftController: WebXRInputSource, rightController: WebXRInputSource)
     {
-        // scene.actionManager = new ActionManager(scene);
         this._leftController = leftController;
         this._rightController = rightController;
-
-        // DON'T FORGET TO CHANGE ME PLEASE
-        this.setPrimaryController(this._rightController);
     }
 
-    public setPrimaryController(controller: WebXRInputSource) : void
+    public setPrimaryController(handedness: boolean) : void
     {
-        // this._primaryController = controller;
-        this._primaryController = this._rightController;
+        // handedness: false for left, true for right
+        this._primaryController = handedness ? this._rightController : this._leftController;
     }
 
     public processControllerInput() : void
