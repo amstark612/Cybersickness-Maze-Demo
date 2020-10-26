@@ -1,21 +1,17 @@
 import { FreeCamera, Mesh, MeshBuilder, Scene, WebXRCamera, WebXRDefaultExperience } from "@babylonjs/core";
 import { Vector3 } from "@babylonjs/core/Maths/math";
 
-// custom classes
-import { InputManager } from "./inputManager";
-
 export class PlayerController
 {
     public xrHelper: WebXRDefaultExperience;
     public xrCamera: WebXRCamera;
     public collider: Mesh;
+    public enableLocomotion: boolean = false;
 
     private _scene: Scene;
 
     // locomotion stuff
     private static readonly SPEED: number = 0.05;
-    private _moveDirection: Vector3 = Vector3.Zero();
-    private _inputManager: InputManager;
 
     constructor(scene: Scene, canvas: HTMLCanvasElement)
     {
@@ -66,35 +62,30 @@ export class PlayerController
         return collider;
     }
 
-    public updateMovement() : void
+    public updateMovement(value: number) : void
     {
-        if (this._inputManager?.z)
+        if (this.enableLocomotion)
         {
             // get player/camera's forward vector
             let forward: Vector3 = this.xrCamera.getDirection(Vector3.Forward());
 
             // +1 = forwards, -1 = backwards
-            let input: number = -(this._inputManager.z/Math.abs(this._inputManager.z));
+            let input: number = -(value/Math.abs(value));
 
             // multiply player's forward vector by direction and speed
             let direction: Vector3 = forward.scaleInPlace(input * PlayerController.SPEED);
 
             // add resulting vector to camera's current position vector
-            this._moveDirection =  this.xrCamera.position.addInPlace(direction);
+            let moveDirection: Vector3 =  this.xrCamera.position.addInPlace(direction);
 
             // ask Courtney how to set this to user's height...using this.xrCamera.position.y still flies
-            this._moveDirection.y = 1.6;      // so user can't go flying up in the air
+            moveDirection.y = 1.6;      // so user can't go flying up in the air
 
             // set camera's new position
-            this.xrCamera.position = this._moveDirection;
+            this.xrCamera.position = moveDirection;
 
             // this is a hacky workaround for the collider because the WebXRCamera collider doesn't DO anything
             this.collider.position = this.xrCamera.position;
         }
-    }
-
-    public set inputManager(input: InputManager)
-    {
-        this._inputManager = input;
     }
 }

@@ -1,14 +1,12 @@
-import { Mesh, MeshBuilder, Scene } from "@babylonjs/core";
+import { Mesh, MeshBuilder, Observable } from "@babylonjs/core";
 import { AdvancedDynamicTexture } from "@babylonjs/gui/2D";
 import { Button, Control, Grid, Image, RadioButton, Rectangle, Slider, StackPanel, TextBlock } from "@babylonjs/gui/2D/controls";
 
-export class UI
+enum GameState { PAUSE = 0, RUNNING = 1, END = -1 }
+
+export class UI extends Observable<{ gameState: GameState, rightHanded?: boolean}>
 {
     private _2Dmenu: AdvancedDynamicTexture;
-    
-    public gamePaused: boolean = true;  // game begins after getting handedness
-    public gameover: boolean = false;
-    public handedness: boolean;     // false for left, true for right
     
     // menus
     public pauseMenu: Mesh;
@@ -25,6 +23,8 @@ export class UI
 
     constructor(name: string)
     {
+        super();
+
         // create fullscreen UI for GUI elements
         this._2Dmenu = AdvancedDynamicTexture.CreateFullscreenUI(name);
         this._2Dmenu.idealHeight = 720;
@@ -56,9 +56,11 @@ export class UI
         return btn;
     }
 
-    public createPauseMenu() : Mesh
+    public createPauseMenu(parent: Mesh) : void
     {
         const plane: Mesh = MeshBuilder.CreatePlane("Pause Menu", { width: 1, height: 0.5 });
+        plane.position.set(parent.position.x, parent.position.y, parent.position.z + 1.5);
+        plane.setParent(parent);
         plane.isVisible = false;
         this.pauseMenu = plane;
 
@@ -87,9 +89,8 @@ export class UI
         resumeBtn.textBlock.textVerticalAlignment = Control.VERTICAL_ALIGNMENT_TOP;
 
         resumeBtn.onPointerDownObservable.add(() => {
-            this.gamePaused = false;
-            plane.isVisible = false;
-            console.log("should be resuming game");
+            this.pauseMenu.isVisible = false;
+            this.notifyObservers({ gameState: GameState.RUNNING });
         });
 
         // create exit button
@@ -103,7 +104,7 @@ export class UI
         exitBtn.textBlock.textVerticalAlignment = Control.VERTICAL_ALIGNMENT_TOP;
 
         exitBtn.onPointerDownObservable.add(() => {
-            this.gameover = true;
+            this.notifyObservers({ gameState: GameState.END });
             plane.dispose();
         });
 
@@ -111,13 +112,12 @@ export class UI
         planeADT.addControl(grid);
         grid.addControl(resumeBtn, 1, 0);
         grid.addControl(exitBtn, 3, 0);
-
-        return plane;
     }
 
-    public createDSPrompt() : void
+    public createDSPrompt(parent: Mesh) : void
     {
         const plane: Mesh = MeshBuilder.CreatePlane("DS Prompt", { width: 1.5, height: 1 });
+        plane.position.set(parent.position.x, parent.position.y, parent.position.z + 1.5);
         plane.isVisible = false;
         this.DSpopup = plane;
 
@@ -174,7 +174,7 @@ export class UI
             console.log("Discomfort score: " + rating);
             rating = 5;     // reset rating to 5 for next time
             plane.isVisible = false;
-            this.gamePaused = false;
+            this.notifyObservers({ gameState: GameState.RUNNING});
         });
 
         // grid for aligning happy/sad faces with slider
@@ -267,8 +267,7 @@ export class UI
         submitBtn.textBlock.textVerticalAlignment = Control.VERTICAL_ALIGNMENT_TOP;
 
         submitBtn.onPointerDownObservable.add(() => {
-            this.handedness = rightHanded;
-            this.gamePaused = false;
+            this.notifyObservers({ gameState: GameState.RUNNING, rightHanded: rightHanded });
             plane.dispose();
         });
 

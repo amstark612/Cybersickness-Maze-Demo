@@ -1,6 +1,6 @@
 import { Color4, Engine, FreeCamera, Scene } from "@babylonjs/core";
-import { WebXRInputSource } from "@babylonjs/core/XR";
-import { Mesh, MeshBuilder } from "@babylonjs/core/Meshes";
+import { WebXRControllerComponent, WebXRInputSource } from "@babylonjs/core/XR";
+import { MeshBuilder } from "@babylonjs/core/Meshes";
 import { ActionManager, ExecuteCodeAction } from "@babylonjs/core";
 import { Vector3 } from "@babylonjs/core/Maths/math";
 import { Button } from "@babylonjs/gui/2D/controls";
@@ -17,6 +17,7 @@ import "@babylonjs/inspector";
 
 
 enum State { START = 0, SETUP = 1, MAIN = 2, POSTTEST = 3 }
+enum GameState { PAUSE = 0, RUNNING = 1, END = -1 }
 
 class App
 {
@@ -32,7 +33,6 @@ class App
     // game state stuff
     private _environment: Environment;
     private _UI: UI = null;
-    private _menu: Mesh;
 
     // player stuff
     private _inputManager: InputManager = null;
@@ -61,14 +61,14 @@ class App
                 case State.START:
                     this._scene.render();
                     break;
-                case State.SETUP:
-                    if (this._UI && !this._UI.gamePaused)
-                    {
-                        this._inputManager?.setPrimaryController(this._UI.handedness);
-                        this._state = State.MAIN;
-                    }
-                    this._scene.render();
-                    break;
+                // case State.SETUP:
+                //     if (this._UI && !this._UI.gamePaused)
+                //     {
+                //         this._inputManager?.setPrimaryController(this._UI.handedness);
+                //         this._state = State.MAIN;
+                //     }
+                //     this._scene.render();
+                //     break;
                 case State.MAIN:
                     this._update();
                     this._scene.render();
@@ -87,23 +87,38 @@ class App
         });
     }
 
+    // renders every loops
     private _update() : void
     {
-        this._inputManager.processControllerInput();
+        this._inputManager?.processControllerInput();
+    }
 
-        if (this._inputManager.callMenu)
+    // executed when notified by input manager
+    private _processControllerInput(component: WebXRControllerComponent) : void
+    {
+        if (component.id == "a-button" || component.id == "x-button")
         {
-            this._UI.gamePaused = true;
-            let position: Vector3 = this._playerController.collider.position;
-            this._menu.position.set(position.x, 1.6, position.y + 1.5);
-            this._menu.isVisible = true;
+            this._playerController.enableLocomotion = false;
+            this._UI.pauseMenu.isVisible = true;
         }
 
-        if (!this._UI.gamePaused)
+        if (component.id == "xr-standard-thumbstick")
         {
-            this._playerController?.updateMovement();
+            this._playerController.updateMovement(component.axes.y);
         }
-        else if (this._UI.gameover)
+    }
+
+    // executed when notified by UI
+    private _processUInotifications(input: { gameState: GameState, rightHanded?: boolean}) : void
+    {
+        this._playerController.enableLocomotion = input.gameState == GameState.RUNNING ? true : false;
+
+        // set handedness before beginning demo
+        if (input.rightHanded!)
+        {
+            this._inputManager.setPrimaryController(input.rightHanded);
+        }
+        else if (input.gameState == -1)
         {
             this._goToEnd();
         }
@@ -139,7 +154,8 @@ class App
 
         // create input manager
         this._inputManager = new InputManager(this._scene, leftController, rightController);
-        this._playerController.inputManager = this._inputManager;
+        // subscribe to input manager notifications for movement and calling popup menu
+        this._inputManager.add((component) => this._processControllerInput(component));
     }
 
     private async _goToStart() : Promise<void>
@@ -222,7 +238,7 @@ class App
         // get rid of start scene and switch to game scene
         this._scene.detachControl();
         this._scene.dispose();
-        this._state = State.SETUP;  // render loop will change to main after getting handedness
+        this._state = State.MAIN;  // render loop will change to main after getting handedness
         this._scene = this._mainScene;
 
         // set up XR camera, collider, controllers
@@ -241,8 +257,10 @@ class App
 
         // create (an initially invisible) menu & discomfort score prompt
         this._UI = new UI("Player UI");
-        this._menu = this._UI.createPauseMenu();
-        this._UI.createDSPrompt();
+        // subscribe to UI notifications for pausing/unpausing game during popups & getting handedness
+        this._UI.add((input) => { this._processUInotifications(input)});
+        this._UI.createPauseMenu(this._playerController.collider);
+        this._UI.createDSPrompt(this._playerController.collider);
 
         // prompt user for handedness
         this._UI.getHandedness();
@@ -269,10 +287,7 @@ class App
                 },
                 () => 
                 {
-                    let position: Vector3 = this._playerController.collider.position;
-                    this._UI.DSpopup.position.set(position.x, 1.6, position.z + 1.5);
                     this._UI.DSpopup.isVisible = true;
-                    this._UI.gamePaused = true;
                     sphere.dispose();
                 }
             )
