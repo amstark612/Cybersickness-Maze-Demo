@@ -3,8 +3,6 @@ import { WebXRControllerComponent, WebXRInputSource } from "@babylonjs/core/XR";
 
 export class InputManager extends Observable<WebXRControllerComponent>
 {
-    // public observable: Observable<WebXRControllerComponent>;
-
     private _leftController: WebXRInputSource | null;
     private _rightController: WebXRInputSource | null;
     private _primaryController: WebXRInputSource;
@@ -12,7 +10,6 @@ export class InputManager extends Observable<WebXRControllerComponent>
     constructor(scene: Scene, leftController: WebXRInputSource, rightController: WebXRInputSource)
     {
         super();
-        // this.observable = new Observable();
 
         this._leftController = leftController;
         this._rightController = rightController;

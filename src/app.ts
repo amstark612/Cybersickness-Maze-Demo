@@ -16,7 +16,7 @@ import "@babylonjs/core/Debug/debugLayer";
 import "@babylonjs/inspector";
 
 
-enum State { START = 0, SETUP = 1, MAIN = 2, POSTTEST = 3 }
+enum State { START = 0, MAIN = 1, POSTTEST = 2 }
 enum GameState { PAUSE = 0, RUNNING = 1, END = -1 }
 
 class App
@@ -61,14 +61,6 @@ class App
                 case State.START:
                     this._scene.render();
                     break;
-                // case State.SETUP:
-                //     if (this._UI && !this._UI.gamePaused)
-                //     {
-                //         this._inputManager?.setPrimaryController(this._UI.handedness);
-                //         this._state = State.MAIN;
-                //     }
-                //     this._scene.render();
-                //     break;
                 case State.MAIN:
                     this._update();
                     this._scene.render();
@@ -258,7 +250,7 @@ class App
         // create (an initially invisible) menu & discomfort score prompt
         this._UI = new UI("Player UI");
         // subscribe to UI notifications for pausing/unpausing game during popups & getting handedness
-        this._UI.add((input) => { this._processUInotifications(input)});
+        this._UI.add((input) => { this._processUInotifications(input) });
         this._UI.createPauseMenu(this._playerController.collider);
         this._UI.createDSPrompt(this._playerController.collider);
 
@@ -279,19 +271,19 @@ class App
 
         // Add action to sphere
         sphere.actionManager = new ActionManager(this._scene);
-        sphere.actionManager.registerAction(
-            new ExecuteCodeAction(
-                { 
-                    trigger: ActionManager.OnIntersectionEnterTrigger,
-                    parameter: { mesh: this._playerController.collider }
-                },
-                () => 
-                {
-                    this._UI.DSpopup.isVisible = true;
-                    sphere.dispose();
-                }
-            )
-        );
+        // sphere.actionManager.registerAction(
+        //     new ExecuteCodeAction(
+        //         { 
+        //             trigger: ActionManager.OnIntersectionEnterTrigger,
+        //             parameter: { mesh: this._playerController.collider }
+        //         },
+        //         () => 
+        //         {
+        //             this._UI.DSpopup.isVisible = true;
+        //             sphere.dispose();
+        //         }
+        //     )
+        // );
 
         this._scene.debugLayer.show();
     }

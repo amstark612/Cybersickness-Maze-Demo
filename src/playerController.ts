@@ -46,6 +46,12 @@ export class PlayerController
 
         this.collider = this._createXRCollider();
 
+        let children = this.xrCamera.rigCameras;
+        console.log(children.length);
+        children.forEach((child) => {
+            child.parent = this.collider;
+        });
+
         // setting these to true doesn't DO anything...?
         this.xrCamera.applyGravity = true;
         this.xrCamera.checkCollisions = true;
@@ -54,10 +60,11 @@ export class PlayerController
     private _createXRCollider() : Mesh
     {
         // create ellipsoid for VR player collisions
-        const collider: Mesh = MeshBuilder.CreateSphere("Player", { diameterX: 0.5, diameterY: 1, diameterZ: 0.5 });
-        collider.visibility = 0;
+        const collider: Mesh = MeshBuilder.CreateSphere("Player collider", { diameterX: 0.5, diameterY: 1, diameterZ: 0.5 });
+        collider.isVisible = false;
         collider.checkCollisions = true;
         collider.position = this.xrCamera.position;
+        collider.position.z = this.xrCamera.position.z + 3;
 
         return collider;
     }
@@ -66,26 +73,20 @@ export class PlayerController
     {
         if (this.enableLocomotion)
         {
-            // get player/camera's forward vector
-            let forward: Vector3 = this.xrCamera.getDirection(Vector3.Forward());
-
             // +1 = forwards, -1 = backwards
             let input: number = -(value/Math.abs(value));
+
+            // get player/camera's forward vector
+            let forward: Vector3 = this.xrCamera.getDirection(Vector3.Forward());
 
             // multiply player's forward vector by direction and speed
             let direction: Vector3 = forward.scaleInPlace(input * PlayerController.SPEED);
 
-            // add resulting vector to camera's current position vector
-            let moveDirection: Vector3 =  this.xrCamera.position.addInPlace(direction);
+            // add resulting vector to collider's current position vector
+            let moveDirection: Vector3 =  this.collider.position.addInPlace(direction);
 
             // ask Courtney how to set this to user's height...using this.xrCamera.position.y still flies
             moveDirection.y = 1.6;      // so user can't go flying up in the air
-
-            // set camera's new position
-            this.xrCamera.position = moveDirection;
-
-            // this is a hacky workaround for the collider because the WebXRCamera collider doesn't DO anything
-            this.collider.position = this.xrCamera.position;
         }
     }
 }
