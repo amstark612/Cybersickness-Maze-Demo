@@ -6,7 +6,6 @@ export class PlayerController
 {
     public xrHelper: WebXRDefaultExperience;
     public xrCamera: WebXRCamera;
-    public playerNode: TransformNode;
     public collider: Mesh;
     public enableLocomotion: boolean = false;
 
@@ -51,21 +50,6 @@ export class PlayerController
 
         this.collider = this._createXRCollider();
 
-        // create empty node that will be pause menu's pivot
-        this.playerNode = new TransformNode("Player node");
-        this.playerNode.position = this.collider.position;
-        // parent to collider
-        this.playerNode.setParent(this.collider);
-
-        // this.collider = this._createXRCollider(parent);
-
-
-        // let children = this.xrCamera.rigCameras;
-        // console.log(children.length);
-        // children.forEach((child) => {
-        //     child.parent = this.collider;
-        // });
-
         // setting these to true doesn't DO anything...?
         this.xrCamera.applyGravity = true;
         this.xrCamera.checkCollisions = true;
@@ -75,14 +59,9 @@ export class PlayerController
     {
         // create ellipsoid for VR player collisions
         const collider: Mesh = MeshBuilder.CreateSphere("Player collider", { diameterX: 0.5, diameterY: 1, diameterZ: 0.5 });
-        // collider.visibility = 0;
+        collider.visibility = 0;
         collider.checkCollisions = true;
-
-        // temporary/debugging
-        // let position: Vector3 = this.xrCamera.position;
         collider.position = this.xrCamera.position;
-        // collider.position.set(position.x, 1.6, position.z + 3);
-        // collider.position.set(0, 2, 2);
 
         return collider;
     }
@@ -99,11 +78,7 @@ export class PlayerController
         
             // multiply player's forward vector by direction and speed
             forward.scaleInPlace(input * PlayerController.SPEED);
-            forward.y = 0;    // so user can't go flying up in the air   
-
-            // // DELETE ME AFTER FIXING
-            // let line: Vector3[] = [this.xrCamera.position, forward];
-            // MeshBuilder.CreateLines("forward", { points: line });
+            forward.y = 0;    // so user can't go flying up in the air
 
             this.collider.moveWithCollisions(forward);
         }
@@ -112,7 +87,7 @@ export class PlayerController
     public updateRotation() : void
     {
         // update collider's rotation to match camera
-        let next: number = this.xrCamera.getDirection(Vector3.Forward()).z;
+        let next: number = this.xrCamera.getDirection(Vector3.Forward()).x;
     
         this.collider.rotate(Axis.Y, next - this.last);
 

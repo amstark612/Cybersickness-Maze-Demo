@@ -56,10 +56,10 @@ export class UI extends Observable<{ gameState: GameState, rightHanded?: boolean
         return btn;
     }
 
-    public createPauseMenu(parent: TransformNode) : void
+    public createPauseMenu(parent: Mesh) : void
     {
         const plane: Mesh = MeshBuilder.CreatePlane("Pause Menu", { width: 1, height: 0.5 });
-        plane.position.set(parent.position.x, -1.5, parent.position.z + 0.5);
+        plane.position.set(parent.position.x, 0, parent.position.z + 1);
         plane.setParent(parent);
         plane.isVisible = false;
         this.pauseMenu = plane;
@@ -114,10 +114,10 @@ export class UI extends Observable<{ gameState: GameState, rightHanded?: boolean
         grid.addControl(exitBtn, 3, 0);
     }
 
-    public createDSPrompt(parent: TransformNode) : void
+    public createDSPrompt(parent: Mesh) : void
     {
         const plane: Mesh = MeshBuilder.CreatePlane("DS Prompt", { width: 1.5, height: 1 });
-        plane.position.set(parent.position.x, parent.position.y, parent.position.z + 1.5);
+        plane.position.set(parent.position.x, 0, parent.position.z + 0.5);
         plane.isVisible = false;
         this.DSpopup = plane;
 

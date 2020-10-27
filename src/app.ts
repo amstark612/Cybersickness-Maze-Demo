@@ -215,8 +215,8 @@ class App
         this._UI = new UI("Player UI");
         // subscribe to UI notifications for pausing/unpausing game during popups & getting handedness
         this._UI.add((input) => { this._processUInotifications(input) });
-        this._UI.createPauseMenu(this._playerController.playerNode);
-        this._UI.createDSPrompt(this._playerController.playerNode);
+        this._UI.createPauseMenu(this._playerController.collider);
+        this._UI.createDSPrompt(this._playerController.collider);
 
         // prompt user for handedness
         this._UI.getHandedness();
