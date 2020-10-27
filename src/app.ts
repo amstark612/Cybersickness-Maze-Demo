@@ -79,21 +79,23 @@ class App
         });
     }
 
-    // renders every loops
     private _update() : void
     {
-        this._inputManager?.processControllerInput();
+        this._inputManager?.updateControllerInput();
+        this._playerController?.updateRotation();
     }
 
     // executed when notified by input manager
     private _processControllerInput(component: WebXRControllerComponent) : void
     {
+        // for calling pause menu
         if (component.id == "a-button" || component.id == "x-button")
         {
             this._playerController.enableLocomotion = false;
             this._UI.pauseMenu.isVisible = true;
         }
 
+        // for locomotion
         if (component.id == "xr-standard-thumbstick")
         {
             this._playerController.updateMovement(component.axes.y);
@@ -101,7 +103,7 @@ class App
     }
 
     // executed when notified by UI
-    private _processUInotifications(input: { gameState: GameState, rightHanded?: boolean}) : void
+    private _processUInotifications(input: { gameState: GameState, rightHanded?: boolean }) : void
     {
         this._playerController.enableLocomotion = input.gameState == GameState.RUNNING ? true : false;
 
@@ -118,15 +120,14 @@ class App
 
     private async _setUpGame() : Promise<void>
     {
-        // create scene
-        const scene: Scene = new Scene(this._engine);
-        this._mainScene = scene;
+        // create main scene
+        this._mainScene = new Scene(this._engine);
 
         // create & load environment
-        this._environment = new Environment(scene);
+        this._environment = new Environment(this._mainScene);
         await this._environment.load().then(res => {
                 // set up (backup) non-VR camera & collider
-                this._playerController = new PlayerController(scene, this._canvas);
+                this._playerController = new PlayerController(this._mainScene, this._canvas);
         });
     }
 
@@ -157,10 +158,9 @@ class App
 
 
         // create scene and camera
-        this._scene.detachControl();
-        const scene: Scene = new Scene(this._engine);
+        this._scene = new Scene(this._engine);
         //scene.clearColor = new Color4(0, 0, 0, 1);
-        const camera: FreeCamera = new FreeCamera("camera1", Vector3.Zero(), scene);
+        const camera: FreeCamera = new FreeCamera("camera1", Vector3.Zero(), this._scene);
         camera.setTarget(Vector3.Zero());
 
         // create fullscreen UI for GUI elements
@@ -176,54 +176,18 @@ class App
             startBtn.onPointerDownObservable.add(() =>
             {
                 this._goToGame();
-                startBtn.dispose();
-                scene.detachControl();
+                this._scene.detachControl();
             });
         });
 
 
         // after scene loads
-        await scene.whenReadyAsync();
+        await this._scene.whenReadyAsync();
         this._engine.hideLoadingUI();
 
         // set current state to start state
-        this._scene = scene;
         this._state = State.START;
     }
-
-    // keeping here in case game logic becomes complicated; will split this of from goToGame()
-    // private async _goToSetup() : Promise<void>
-    // {
-    //     // set up scene
-    //     this._scene.detachControl();
-    //     const scene = this._mainScene;
-
-    //     // get rid of start scene and switch to game scene
-    //     this._scene.dispose();
-    //     this._state = State.SETUP;
-    //     this._scene = scene;
-
-    //     // set up XR camera, collider, controllers
-    //     await this._playerController.loadXR().then(() => {
-    //         this._playerController.xrHelper.input.onControllerAddedObservable.add((inputSource) => {
-    //             this._setUpXR(inputSource);
-
-    //             // make it rain coins now that we have a player collider
-    //             this._environment.generateCoins(this._playerController.collider);
-
-    //             // hide loading screen and reattach control now that scene is ready
-    //             this._engine.hideLoadingUI();
-    //             this._scene.attachControl();
-    //         });
-    //     });
-
-    //     // create (an initially invisible) discomfort score prompt
-    //     this._UI = new UI("Player UI");
-    //     this._UI.createDSPrompt(scene);
-
-    //     // prompt user for handedness
-    //     this._UI.getHandedness(scene);
-    // }
 
     private async _goToGame() : Promise<void>
     {
@@ -251,8 +215,8 @@ class App
         this._UI = new UI("Player UI");
         // subscribe to UI notifications for pausing/unpausing game during popups & getting handedness
         this._UI.add((input) => { this._processUInotifications(input) });
-        this._UI.createPauseMenu(this._playerController.collider);
-        this._UI.createDSPrompt(this._playerController.collider);
+        this._UI.createPauseMenu(this._playerController.playerNode);
+        this._UI.createDSPrompt(this._playerController.playerNode);
 
         // prompt user for handedness
         this._UI.getHandedness();
@@ -297,7 +261,7 @@ class App
         // create scene and camera
         this._scene.detachControl();
         const scene: Scene = new Scene(this._engine);
-        scene.clearColor = new Color4(0, 0, 0, 1);
+        // scene.clearColor = new Color4(0, 0, 0, 1);
         const camera: FreeCamera = new FreeCamera("camera1", Vector3.Zero(), scene);
         camera.setTarget(Vector3.Zero());
 

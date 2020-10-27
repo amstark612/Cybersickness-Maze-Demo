@@ -1,4 +1,4 @@
-import { Mesh, MeshBuilder, Observable } from "@babylonjs/core";
+import { Mesh, MeshBuilder, Observable, TransformNode } from "@babylonjs/core";
 import { AdvancedDynamicTexture } from "@babylonjs/gui/2D";
 import { Button, Control, Grid, Image, RadioButton, Rectangle, Slider, StackPanel, TextBlock } from "@babylonjs/gui/2D/controls";
 
@@ -56,10 +56,10 @@ export class UI extends Observable<{ gameState: GameState, rightHanded?: boolean
         return btn;
     }
 
-    public createPauseMenu(parent: Mesh) : void
+    public createPauseMenu(parent: TransformNode) : void
     {
         const plane: Mesh = MeshBuilder.CreatePlane("Pause Menu", { width: 1, height: 0.5 });
-        plane.position.set(parent.position.x, parent.position.y, parent.position.z + 1.5);
+        plane.position.set(parent.position.x, -1.5, parent.position.z + 0.5);
         plane.setParent(parent);
         plane.isVisible = false;
         this.pauseMenu = plane;
@@ -114,7 +114,7 @@ export class UI extends Observable<{ gameState: GameState, rightHanded?: boolean
         grid.addControl(exitBtn, 3, 0);
     }
 
-    public createDSPrompt(parent: Mesh) : void
+    public createDSPrompt(parent: TransformNode) : void
     {
         const plane: Mesh = MeshBuilder.CreatePlane("DS Prompt", { width: 1.5, height: 1 });
         plane.position.set(parent.position.x, parent.position.y, parent.position.z + 1.5);

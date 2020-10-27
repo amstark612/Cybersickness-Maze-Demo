@@ -2,7 +2,7 @@ import { DirectionalLight, HemisphericLight, Scene, SceneLoader } from "@babylon
 import { StandardMaterial, Texture } from "@babylonjs/core/Materials";
 import { SkyMaterial } from "@babylonjs/materials/sky";
 import { ActionManager, ExecuteCodeAction } from "@babylonjs/core/Actions";
-import { AbstractMesh, Mesh, MeshBuilder } from "@babylonjs/core/Meshes";
+import { AbstractMesh, Mesh, MeshBuilder, TransformNode } from "@babylonjs/core/Meshes";
 import { Color3, Vector3 } from "@babylonjs/core/Maths/math";
 import { WebXRDefaultExperience } from "@babylonjs/core/XR";
 
@@ -22,6 +22,9 @@ export class Environment
 
     public async load()
     {
+        // create parent transform node (for organizing inspector)
+        let parent: TransformNode = new TransformNode("Environment");
+
         // load textures
         let wallTexture: Texture = new Texture("assets/textures/brick.png", this._scene);
         wallTexture.uScale = 5;
@@ -41,6 +44,7 @@ export class Environment
         SceneLoader.ImportMesh("", "assets/models/", "Maze2.glb", this._scene, (meshes) =>
         {
             meshes[0].name = "Maze";
+            meshes[0].setParent(parent);
             meshes[0].scaling = new Vector3(2, 2, 2);
             meshes[0].rotation = new Vector3(0, Math.PI, 0);
 
@@ -55,8 +59,8 @@ export class Environment
             });
         });
 
-        this._createSky();
-        this._createLights();
+        this._createSky(parent);
+        this._createLights(parent);
 
         // create gravity
         this._scene.gravity = new Vector3(0, -9.81, 0);
@@ -69,6 +73,7 @@ export class Environment
         // environment!.ground!.position = new Vector3(0, 0, 0);
 
         let ground: Mesh = MeshBuilder.CreateGround("ground", { width: 100, height: 100 }, this._scene);
+        ground.setParent(parent);
         ground.position.set(0, 0.04, 0);
         ground.material = groundMaterial;
 
@@ -76,7 +81,7 @@ export class Environment
         ground.checkCollisions = true;
     }
 
-    private _createSky() : void
+    private _createSky(parent: TransformNode) : void
     {
         // create sky material
         let skyboxMat: SkyMaterial = new SkyMaterial("sky material", this._scene);
@@ -89,25 +94,29 @@ export class Environment
 
         // create skybox
         const skybox: Mesh = Mesh.CreateBox("skyBox", 100, this._scene);
+        skybox.setParent(parent);
         skybox.material = skyboxMat;
     }
 
-    private _createLights() : void
+    private _createLights(parent: TransformNode) : void
     {
         // ambient light to illuminate objects
-        let ambientlight: HemisphericLight = new HemisphericLight("ambient", Vector3.Up(), this._scene);
-        ambientlight.intensity = 1.0;
-        ambientlight.diffuse = new Color3(0.7, 0.7, 0.7);
+        let ambientLight: HemisphericLight = new HemisphericLight("ambient", Vector3.Up(), this._scene);
+        ambientLight.parent = parent;
+        ambientLight.intensity = 1.0;
+        ambientLight.diffuse = new Color3(0.7, 0.7, 0.7);
 
         // directional light for more definition in shadows
         let directionalLight: DirectionalLight = new DirectionalLight("sunlight", Vector3.Down(), this._scene);
+        directionalLight.parent = parent;
         directionalLight.intensity = 0.6;
     }
 
-    private _createCoin(collider: Mesh, position: Vector3) : void
+    private _createCoin(collider: Mesh, parent: TransformNode, position: Vector3) : void
     {
         let coin: Mesh = MeshBuilder.CreateSphere("Coin", { diameter: 0.3, segments: 32 }, this._scene);
         coin.position = position;
+        coin.setParent(parent);
         coin.checkCollisions = true;
 
         coin.actionManager = new ActionManager(this._scene);
@@ -137,8 +146,11 @@ export class Environment
             new Vector3(3, 1, 6)
         ]
 
+        // create a transform node as parent (for organizing inspector)
+        let parent: TransformNode = new TransformNode("Coins");
+
         coins.forEach((position) => {
-            this._createCoin(collider, position);
+            this._createCoin(collider, parent, position);
         });
     }
 }

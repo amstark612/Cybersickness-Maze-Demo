@@ -20,7 +20,7 @@ export class InputManager extends Observable<WebXRControllerComponent>
         this._primaryController = rightHanded ? this._rightController : this._leftController;
     }
 
-    public processControllerInput() : void
+    public updateControllerInput() : void
     {
         this._onLeftTrigger(this._leftController?.motionController?.getComponent("xr-standard-trigger"));
         this._onRightTrigger(this._rightController?.motionController?.getComponent("xr-standard-trigger"));
