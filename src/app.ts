@@ -85,7 +85,6 @@ export class App
     private _update() : void
     {
         this._inputManager?.updateControllerInput();
-        // this._playerController?.updateRotation();
     }
 
     // executed when notified by input manager
