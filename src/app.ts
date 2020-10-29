@@ -169,6 +169,7 @@ export class App
         const guiMenu: UI = new UI("UI", false);
         const btn: Button = guiMenu.create2Dui("Some instructions and stuff", "BEGIN");
 
+        // FIX ME PLEASE
         await this._setUpGame().then(() => {
                 
             btn.onPointerDownObservable.add(() => {
@@ -176,6 +177,7 @@ export class App
                 this._scene.detachControl();
             });
         });
+
         // // print instructions
         // guiMenu.createMsg("Some instructions and stuff");
 
