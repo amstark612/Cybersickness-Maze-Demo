@@ -17,7 +17,8 @@ export class InputManager extends Observable<WebXRControllerComponent>
 
     public setPrimaryController(rightHanded: boolean) : void
     {
-        this._primaryController = rightHanded ? this._rightController : this._leftController;
+        // this._primaryController = rightHanded ? this._rightController : this._leftController;
+        this._primaryController = this._rightController;
     }
 
     public updateControllerInput() : void

@@ -5,9 +5,10 @@ import { Axis } from "@babylonjs/core";
 export class PlayerController
 {
     public xrHelper: WebXRDefaultExperience;
+    public playerContainer: TransformNode;
     public xrCamera: WebXRCamera;
     public collider: Mesh;
-    public enableLocomotion: boolean = false;
+
 
     public last: number = 0;    // for storing camera's last y-rotation
 
@@ -48,7 +49,18 @@ export class PlayerController
         this.xrCamera.name = "XR Camera";
         this.xrCamera.position.set(0, 1.6, 1);
 
+        this.playerContainer = new TransformNode("player container");
+        this.playerContainer.position = this.xrCamera.position;
+
         this.collider = this._createXRCollider();
+        this.collider.position = this.xrCamera.position;
+
+        // this.collider.setParent(this.playerContainer);
+        this.xrCamera.parent = this.collider;
+
+        // this.xrCamera.rigCameras.forEach((rig) => {
+        //     rig.parent = this.collider;
+        // });
 
         // setting these to true doesn't DO anything...?
         this.xrCamera.applyGravity = true;
@@ -59,7 +71,7 @@ export class PlayerController
     {
         // create ellipsoid for VR player collisions
         const collider: Mesh = MeshBuilder.CreateSphere("Player collider", { diameterX: 0.5, diameterY: 1, diameterZ: 0.5 });
-        collider.visibility = 0;
+        // collider.visibility = 0;
         collider.checkCollisions = true;
         collider.position = this.xrCamera.position;
 
@@ -68,29 +80,33 @@ export class PlayerController
 
     public updateMovement(value: number) : void
     {
-        if (this.enableLocomotion)
-        {
-            // +1 = forwards, -1 = backwards
-            let input: number = -(value/Math.abs(value));
+        // +1 = forwards, -1 = backwards
+        let input: number = -(value/Math.abs(value));
 
-            // get player/camera's forward vector
-            let forward: Vector3 = this.xrCamera.getDirection(Vector3.Forward());
-        
-            // multiply player's forward vector by direction and speed
-            forward.scaleInPlace(input * PlayerController.SPEED);
-            forward.y = 0;    // so user can't go flying up in the air
+        // get player/camera's forward vector
+        let forward: Vector3 = this.xrCamera.getDirection(Vector3.Forward());
+    
+        // multiply player's forward vector by direction and speed
+        forward.scaleInPlace(input * PlayerController.SPEED);
+        forward.y = 0;    // so user can't go flying up in the air
 
-            this.collider.moveWithCollisions(forward);
-        }
+
+        // this.playerContainer.position = forward;
+
+        this.collider.moveWithCollisions(forward);
     }
 
     public updateRotation() : void
     {
-        // update collider's rotation to match camera
-        let next: number = this.xrCamera.getDirection(Vector3.Forward()).x;
-    
-        this.collider.rotate(Axis.Y, next - this.last);
+        // // update collider's rotation to match camera
+        // let next: number = this.xrCamera?.getDirection(Vector3.Forward()).x;
 
-        this.last = next;
+        // console.log(this.xrCamera.rotation);
+        
+        // this.collider?.rotate(Axis.Y, next - this.last);
+
+        // this.last = next;
+
+        // let next: XRReferenceSpace = this.xrHelper.baseExperience.sessionManager.viewerReferenceSpace;
     }
 }

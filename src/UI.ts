@@ -2,9 +2,9 @@ import { Mesh, MeshBuilder, Observable, TransformNode } from "@babylonjs/core";
 import { AdvancedDynamicTexture } from "@babylonjs/gui/2D";
 import { Button, Control, Grid, Image, RadioButton, Rectangle, Slider, StackPanel, TextBlock } from "@babylonjs/gui/2D/controls";
 
-enum GameState { PAUSE = 0, RUNNING = 1, END = -1 }
+enum State { MAIN = 1, PAUSE = 2, POSTTEST = 3 }
 
-export class UI extends Observable<{ gameState: GameState, rightHanded?: boolean}>
+export class UI extends Observable<{ gameState: State, rightHanded?: boolean }>
 {
     private _2Dmenu: AdvancedDynamicTexture;
     
@@ -21,48 +21,72 @@ export class UI extends Observable<{ gameState: GameState, rightHanded?: boolean
     private static readonly fontSize: number = 36;
     private static readonly textScaleY: number = 1.3; // for scaling text in 3D; looks weird otherwise for some unknown reason
 
-    constructor(name: string)
+    constructor(name: string, gui3D: boolean, collider?: Mesh)
     {
         super();
 
-        // create fullscreen UI for GUI elements
-        this._2Dmenu = AdvancedDynamicTexture.CreateFullscreenUI(name);
-        this._2Dmenu.idealHeight = 720;
-
+        if (!gui3D)
+        {
+            // create fullscreen UI for GUI elements
+            this._2Dmenu = AdvancedDynamicTexture.CreateFullscreenUI(name);
+            this._2Dmenu.idealHeight = 720;
+        }
+        else
+        {
+            this.DSpopup = this._createDSPrompt(collider);
+            this.pauseMenu = this._createPauseMenu(collider);
+        }
     }
 
-    public createMsg(message: string) : void
+    private _createMsg(message: string) : TextBlock
     {
-       // display instructions
        const textBox: TextBlock = new TextBlock("Text Box");
        textBox.text = message;
        textBox.color = "black";
        textBox.fontSize = UI.fontSize;
-       this._2Dmenu.addControl(textBox);
+
+       return textBox;
     }
 
-    public createBtn(name: string) : Button
+    private _createBtn(name: string) : Button
     {
-        // create a button
+        // // create a button
+        // const btn: Button = Button.CreateSimpleButton(name + " button", name);
+        // btn.height = "120px";
+        // btn.color = "white";
+        // btn.width = 0.2;
+        // btn.top = "-14px";
+        // btn.thickness = 0;
+        // btn.verticalAlignment = Control.VERTICAL_ALIGNMENT_BOTTOM;
+
         const btn: Button = Button.CreateSimpleButton(name + " button", name);
-        btn.height = "120px";
-        btn.color = "white";
-        btn.width = 0.2;
-        btn.top = "-14px";
-        btn.thickness = 0;
+        btn.widthInPixels = 300;
+        btn.heightInPixels = 100;
+        // btn.scaleY = UI.textScaleY;
+        btn.fontSize = UI.fontSize;
+        btn.thickness = 0;    // border
+
+        return btn;
+    }
+
+    public create2Dui(text: string, button: string) : Button
+    {
+        let textbox: TextBlock = this._createMsg(text);
+        let btn: Button = this._createBtn(button);
         btn.verticalAlignment = Control.VERTICAL_ALIGNMENT_BOTTOM;
+
+        this._2Dmenu.addControl(textbox);
         this._2Dmenu.addControl(btn);
 
         return btn;
     }
 
-    public createPauseMenu(parent: Mesh) : void
+    private _createPauseMenu(parent: Mesh) : Mesh
     {
         const plane: Mesh = MeshBuilder.CreatePlane("Pause Menu", { width: 1, height: 0.5 });
-        plane.position.set(parent.position.x, 0, parent.position.z + 1);
+        plane.position.set(parent.position.x, 1.6, parent.position.z + 1);
         plane.setParent(parent);
         plane.isVisible = false;
-        this.pauseMenu = plane;
 
         const planeADT: AdvancedDynamicTexture = AdvancedDynamicTexture.CreateForMesh(plane);
 
@@ -90,7 +114,7 @@ export class UI extends Observable<{ gameState: GameState, rightHanded?: boolean
 
         resumeBtn.onPointerDownObservable.add(() => {
             this.pauseMenu.isVisible = false;
-            this.notifyObservers({ gameState: GameState.RUNNING });
+            this.notifyObservers({ gameState: State.MAIN });
         });
 
         // create exit button
@@ -104,7 +128,7 @@ export class UI extends Observable<{ gameState: GameState, rightHanded?: boolean
         exitBtn.textBlock.textVerticalAlignment = Control.VERTICAL_ALIGNMENT_TOP;
 
         exitBtn.onPointerDownObservable.add(() => {
-            this.notifyObservers({ gameState: GameState.END });
+            this.notifyObservers({ gameState: State.POSTTEST });
             plane.dispose();
         });
 
@@ -112,14 +136,15 @@ export class UI extends Observable<{ gameState: GameState, rightHanded?: boolean
         planeADT.addControl(grid);
         grid.addControl(resumeBtn, 1, 0);
         grid.addControl(exitBtn, 3, 0);
+
+        return plane;
     }
 
-    public createDSPrompt(parent: Mesh) : void
+    private _createDSPrompt(parent: Mesh) : Mesh
     {
         const plane: Mesh = MeshBuilder.CreatePlane("DS Prompt", { width: 1.5, height: 1 });
         plane.position.set(parent.position.x, 0, parent.position.z + 0.5);
         plane.isVisible = false;
-        this.DSpopup = plane;
 
         // do this so it shows up right in 3D. don't ask me why because I don't know. DON'T AT ME.
         const planeADT: AdvancedDynamicTexture = AdvancedDynamicTexture.CreateForMesh(plane);
@@ -174,7 +199,7 @@ export class UI extends Observable<{ gameState: GameState, rightHanded?: boolean
             console.log("Discomfort score: " + rating);
             rating = 5;     // reset rating to 5 for next time
             plane.isVisible = false;
-            this.notifyObservers({ gameState: GameState.RUNNING});
+            this.notifyObservers({ gameState: State.MAIN });
         });
 
         // grid for aligning happy/sad faces with slider
@@ -205,6 +230,8 @@ export class UI extends Observable<{ gameState: GameState, rightHanded?: boolean
         grid.addControl(slider, 3, 2);
         grid.addControl(happyface, 3, 3);
         grid.addControl(submitBtn, 5, 2);
+
+        return plane;
     }
 
     public getHandedness() : void
@@ -267,7 +294,7 @@ export class UI extends Observable<{ gameState: GameState, rightHanded?: boolean
         submitBtn.textBlock.textVerticalAlignment = Control.VERTICAL_ALIGNMENT_TOP;
 
         submitBtn.onPointerDownObservable.add(() => {
-            this.notifyObservers({ gameState: GameState.RUNNING, rightHanded: rightHanded });
+            this.notifyObservers({ gameState: State.MAIN, rightHanded: rightHanded });
             plane.dispose();
         });
 
