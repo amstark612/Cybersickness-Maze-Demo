@@ -2,19 +2,18 @@ import { FreeCamera, Mesh, MeshBuilder, Scene } from "@babylonjs/core";
 import { WebXRCamera, WebXRDefaultExperience, WebXRSessionManager } from "@babylonjs/core/XR";
 import { Vector3 } from "@babylonjs/core/Maths/math";
 
-export class PlayerController
-{
+export class PlayerController {
     public xrHelper: WebXRDefaultExperience;
     public xrCamera: WebXRCamera;
     public collider: Mesh;
+    public enableLocomotion: boolean = false;
 
     private _scene: Scene;
 
     // locomotion stuff
-    private static readonly SPEED: number = 0.05;
+    private static readonly SPEED: number = 0.075;
 
-    constructor(scene: Scene, canvas: HTMLCanvasElement)
-    {
+    constructor(scene: Scene, canvas: HTMLCanvasElement) {
         this._scene = scene;
 
         // this creates and positions a first-person non-VR camera (non-mesh)
@@ -36,8 +35,7 @@ export class PlayerController
         camera.checkCollisions = true;
     }
 
-    public async loadXR() : Promise<void>
-    {
+    public async loadXR() : Promise<void> {
         // create XR experience && xr camera/player
         this.xrHelper = await this._scene.createDefaultXRExperienceAsync({ disableTeleportation: true });
 
@@ -45,65 +43,50 @@ export class PlayerController
         this.xrCamera.name = "XR Camera";
         this.xrCamera.position.set(0, 1.6, 1);
 
-
         this.collider = this._createXRCollider();
-        this.collider.position.set(0, 1.6, 1);
         this.collider.setParent(this.xrCamera);
 
-
-        // setting these to true doesn't DO anything...?
-        this.xrCamera.applyGravity = true;
-        this.xrCamera.checkCollisions = true;
+        // // setting these to true doesn't DO anything...?
+        // this.xrCamera.applyGravity = true;
+        // this.xrCamera.checkCollisions = true;
     }
 
-    private _createXRCollider() : Mesh
-    {
+    private _createXRCollider() : Mesh {
         // create ellipsoid for VR player collisions
-        const collider: Mesh = MeshBuilder.CreateSphere("Player collider", { diameterX: 0.5, diameterY: 1, diameterZ: 0.5 });
-        // collider.visibility = 0;
+        const collider: Mesh = MeshBuilder.CreateSphere("Player collider", { diameterX: 0.5, diameterY: 1.6, diameterZ: 0.5 });
+        collider.visibility = 0;
         collider.checkCollisions = true;
         collider.position = this.xrCamera.position;
 
         return collider;
     }
 
-    public updateMovement(value: number) : void
-    {
-        // // +1 = forwards, -1 = backwards
-        // let input: number = -(value/Math.abs(value));
+    public updateMovement(value: number) : void {
+        if (this.enableLocomotion) {
+            let sessionManager: WebXRSessionManager = this.xrHelper.baseExperience.sessionManager;
 
-        // // get player/camera's forward vector
-        // let forward: Vector3 = this.xrCamera.getDirection(Vector3.Forward());
-    
-        // // multiply player's forward vector by direction and speed
-        // forward.scaleInPlace(input * PlayerController.SPEED);
-        // forward.y = 0;    // so user can't go flying up in the air
+            // +1 = forwards, -1 = backwards
+            let input: number = -(value/Math.abs(value));
 
+            // get player/camera's forward vector
+            let forward: Vector3 = this.xrCamera.getDirection(Vector3.Forward());
+        
+            // multiply player's forward vector by direction and speed
+            forward.scaleInPlace(input * PlayerController.SPEED);
 
-        // // this.playerContainer.position = forward;
+            // why does the x value need to be negative? i don't know, but it works...
+            let direction: XRRigidTransform = new XRRigidTransform({
+                x: -forward.x,
+                y: 0,   // so user can't go flying up in the air
+                z: forward.z,
+            });
 
-        // this.collider.moveWithCollisions(forward);
+            let newPosition: XRReferenceSpace = sessionManager.referenceSpace.getOffsetReferenceSpace(direction);
 
-        let sessionManager: WebXRSessionManager = this.xrHelper.baseExperience.sessionManager;
+            sessionManager.referenceSpace = newPosition;
 
-        // +1 = forwards, -1 = backwards
-        let input: number = -(value/Math.abs(value));
-
-        // get player/camera's forward vector
-        let forward: Vector3 = this.xrCamera.getDirection(Vector3.Forward());
-    
-        // multiply player's forward vector by direction and speed
-        forward.scaleInPlace(input * PlayerController.SPEED);
-
-        // why does the x value need to be negative? i don't know, but it works...
-        let direction: XRRigidTransform = new XRRigidTransform({
-            x: -forward.x,
-            y: 0,   // so user can't go flying up in the air
-            z: forward.z,
-        });
-
-        let newPosition: XRReferenceSpace = sessionManager.referenceSpace.getOffsetReferenceSpace(direction);
-
-        sessionManager.referenceSpace = newPosition;
+            // babylon is stupid and will move the collider away from camera unless you do this.
+            this.collider.setPositionWithLocalVector(Vector3.Zero());
+        }
     }
 }

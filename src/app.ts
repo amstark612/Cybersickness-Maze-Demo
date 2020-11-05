@@ -16,10 +16,9 @@ import "@babylonjs/core/Debug/debugLayer";
 import "@babylonjs/inspector";
 
 
-enum State { START = 0, MAIN = 1, PAUSE = 2, POSTTEST = 3 }
+enum State { START = 0, PAUSED = 1, MAIN = 2, POSTTEST = 3 }
 
-export class App
-{
+export class App {
     // general app stuff
     private _scene: Scene;
     private _canvas: HTMLCanvasElement;
@@ -31,14 +30,13 @@ export class App
 
     // game state stuff
     private _environment: Environment;
-    private _UI: UI = null;
+    private _mainUI: UI = null;
 
     // player stuff
     private _inputManager: InputManager = null;
     private _playerController: PlayerController = null;
 
-    constructor()
-    {
+    constructor() {
         // get canvas & initialize babylon scene and 3D engine
         this._canvas = document.getElementById("renderCanvas") as HTMLCanvasElement;
         this._engine = new Engine(this._canvas, true);
@@ -48,23 +46,20 @@ export class App
         this._main();
     }
 
-    private async _main() : Promise<void>
-    {
+    private async _main() : Promise<void> {
         await this._goToStart();
 
         // render loop
-        this._engine.runRenderLoop(() =>
-        {
-            switch (this._state)
-            {
+        this._engine.runRenderLoop(() => {
+            switch (this._state) {
                 case State.START:
                     this._scene.render();
                     break;
-                case State.MAIN:
+                case State.PAUSED:
                     this._update();
                     this._scene.render();
                     break;
-                case State.PAUSE:
+                case State.MAIN:
                     this._update();
                     this._scene.render();
                     break;
@@ -82,45 +77,64 @@ export class App
         });
     }
 
-    private _update() : void
-    {
+    private _update() : void {
         this._inputManager?.updateControllerInput();
     }
 
+    // ugly solution for changing game state from UI class
+    public changeGameState(state: State) : void {
+        switch(state) {
+            case State.PAUSED:
+                // how to get rid of this ugly special case?
+                if (this._state == State.START) {
+                    this._goToGame();
+                }
+                this._playerController.enableLocomotion = false;
+                this._state = State.PAUSED;
+                break;
+            case State.MAIN:
+                this._playerController.enableLocomotion = true;
+                this._state = State.MAIN;
+                break;
+            case State.POSTTEST:
+                this._goToEnd();
+                this._state = State.POSTTEST;
+                break;
+            default:
+                break;
+        }
+    }
+
+    public returnToLastCheckpoint() : void {
+
+    }
+
     // executed when notified by input manager
-    private _processControllerInput(component: WebXRControllerComponent) : void
-    {
+    private _processControllerInput(component: WebXRControllerComponent) : void {
         // for locomotion
-        if (this._state != State.PAUSE && component.id == "xr-standard-thumbstick")
-        {
+        if (component.id == "xr-standard-thumbstick") {
             this._playerController.updateMovement(component.axes.y);
         }
         // for calling pause menu
-        else if (component.id == "a-button" || component.id == "x-button")
-        {
-            this._state = State.PAUSE;
-            this._UI.pauseMenu.isVisible = true;
+        else if (component.id == "a-button" || component.id == "x-button") {
+            this.changeGameState(State.PAUSED);
+            this._mainUI.pauseMenu.isVisible = true;
         }
     }
 
     // executed when notified by UI
-    private _processUInotifications(input: { gameState: State, rightHanded?: boolean }) : void
-    {
-        if (input.gameState == State.POSTTEST)
-        {
-            this._goToEnd();
-        }
+    private _processUInotifications(input: { gameState: State, rightHanded?: boolean }) : void {
         // set handedness before beginning demo
-        else if (input.rightHanded!)
-        {
+        if (input.rightHanded!) {
             this._inputManager.setPrimaryController(input.rightHanded);
         }
 
-        this._state = input.gameState;
+        this.changeGameState(input.gameState);
+
+        console.log("hello");
     }
 
-    private async _setUpGame() : Promise<void>
-    {
+    private async _setUpMainScene() : Promise<void> {
         // create main scene
         this._mainScene = new Scene(this._engine);
 
@@ -130,86 +144,6 @@ export class App
                 // set up (backup) non-VR camera & collider
                 this._playerController = new PlayerController(this._mainScene, this._canvas);
         });
-    }
-
-    private _setUpXR(inputSource: WebXRInputSource) : void
-    {
-        let leftController: WebXRInputSource;
-        let rightController: WebXRInputSource;
-
-        if (inputSource.uniqueId.endsWith("left"))
-        {
-            leftController = inputSource;
-        }
-        else
-        {
-            rightController = inputSource;
-        }
-
-        // create input manager
-        this._inputManager = new InputManager(this._scene, leftController, rightController);
-        // subscribe to input manager notifications for movement and calling pause menu
-        this._inputManager.add((component) => this._processControllerInput(component));
-    }
-
-    private async _goToStart() : Promise<void>
-    {
-        // display loading screen while loading
-        this._engine.displayLoadingUI();
-
-
-        // create scene and camera
-        this._scene = new Scene(this._engine);
-        //scene.clearColor = new Color4(0, 0, 0, 1);
-        const camera: FreeCamera = new FreeCamera("camera1", Vector3.Zero(), this._scene);
-        camera.setTarget(Vector3.Zero());
-
-        
-        // create fullscreen UI for GUI elements
-        const guiMenu: UI = new UI("UI", false);
-        const btn: Button = guiMenu.create2Dui("Some instructions and stuff", "BEGIN");
-
-        // FIX ME PLEASE
-        await this._setUpGame().then(() => {
-                
-            btn.onPointerDownObservable.add(() => {
-                this._goToGame();
-                this._scene.detachControl();
-            });
-        });
-
-        // // print instructions
-        // guiMenu.createMsg("Some instructions and stuff");
-
-        // await this._setUpGame().then(() => {
-        //     // create a button
-        //     const startBtn: Button = guiMenu.createBtn("BEGIN");
-
-        //     startBtn.onPointerDownObservable.add(() =>
-        //     {
-        //         this._goToGame();
-        //         this._scene.detachControl();
-        //     });
-        // });
-
-
-        // after scene loads
-        await this._scene.whenReadyAsync();
-        this._engine.hideLoadingUI();
-
-        // set current state to start state
-        this._state = State.START;
-
-        this._scene.debugLayer.show();
-    }
-
-    private async _goToGame() : Promise<void>
-    {
-        // get rid of start scene and switch to game scene
-        this._scene.detachControl();
-        this._scene.dispose();
-        this._state = State.PAUSE;  // render loop will change to main after getting handedness
-        this._scene = this._mainScene;
 
         // set up XR camera, collider, controllers
         await this._playerController.loadXR().then(() => {
@@ -225,12 +159,88 @@ export class App
             });
         });
 
-        // create (an initially invisible) menu & discomfort score prompt
-        this._UI = new UI("Player UI", true, this._playerController.collider);
+        // create (an initially invisible) pause menu & discomfort score prompt
+        this._mainUI = new UI("Player UI", true, this._mainScene, this._playerController.collider);
         // subscribe to UI notifications for pausing/unpausing game during popups & getting handedness
-        this._UI.add((input) => { this._processUInotifications(input) });
-        // get handedness
-        this._UI.getHandedness();
+        this._mainUI.add((input) => { this._processUInotifications(input) });
+    }
+
+    // sets up XR & input manager
+    private _setUpXR(inputSource: WebXRInputSource) : void {
+        let leftController: WebXRInputSource;
+        let rightController: WebXRInputSource;
+
+        if (inputSource.uniqueId.endsWith("left")) {
+            leftController = inputSource;
+        }
+        else {
+            rightController = inputSource;
+        }
+
+        // create input manager
+        this._inputManager = new InputManager(this._scene, leftController, rightController);
+        // subscribe to input manager notifications for movement and calling pause menu
+        this._inputManager.add((component) => this._processControllerInput(component));
+    }
+
+    private async _goToStart() : Promise<void> {
+        // display loading screen while loading
+        this._engine.displayLoadingUI();
+
+        // create scene and camera
+        this._scene = new Scene(this._engine);
+        const camera: FreeCamera = new FreeCamera("camera1", Vector3.Zero(), this._scene);
+        camera.setTarget(Vector3.Zero());
+        
+        // create fullscreen UI for GUI elements
+        const guiMenu: UI = new UI("UI", false);
+        // subscribe to UI notifications so start button works
+        guiMenu.add((input) => this._processUInotifications(input));
+
+        // FIX ME PLEASE
+        await this._setUpMainScene().then(() => {
+                guiMenu.createStartScreen(this._scene);
+        });
+
+        // after scene loads
+        await this._scene.whenReadyAsync();
+        this._engine.hideLoadingUI();
+
+        // set current state to start state
+        this._state = State.START;
+
+
+
+        this._scene.debugLayer.show();
+    }
+
+    private async _goToGame() : Promise<void> {
+        // get rid of start scene and switch to game scene
+        this._scene.detachControl();
+        this._scene.dispose();
+        this._state = State.PAUSED;
+        this._scene = this._mainScene;
+
+        // // set up XR camera, collider, controllers
+        // await this._playerController.loadXR().then(() => {
+        //     this._playerController.xrHelper.input.onControllerAddedObservable.add((inputSource) => {
+        //         this._setUpXR(inputSource);
+
+        //         // make it rain coins now that we have a player collider
+        //         this._environment.generateCoins(this._playerController.collider);
+
+        //         // hide loading screen and reattach control now that scene is ready
+        //         this._engine.hideLoadingUI();
+        //         this._scene.attachControl();
+        //     });
+        // });
+
+        // // create (an initially invisible) pause menu & discomfort score prompt
+        // this._mainUI = new UI("Player UI", true, this._playerController.collider);
+        // // subscribe to UI notifications for pausing/unpausing game during popups & getting handedness
+        // this._mainUI.add((input) => { this._processUInotifications(input) });
+        // // get handedness
+        // this._mainUI.getHandedness();
 
 
 
@@ -272,15 +282,12 @@ export class App
         // create scene and camera
         this._scene.detachControl();
         const scene: Scene = new Scene(this._engine);
-        // scene.clearColor = new Color4(0, 0, 0, 1);
         const camera: FreeCamera = new FreeCamera("camera1", Vector3.Zero(), scene);
         camera.setTarget(Vector3.Zero());
 
         // create fullscreen UI for GUI elements
         const guiMenu: UI = new UI("End UI", false);
-
-        // display instructions
-        // guiMenu.createMsg("Instructions for uploading data or whatever needs to happen after demo");
+        guiMenu.createEndScreen();
 
         // after scene loads
         await scene.whenReadyAsync();

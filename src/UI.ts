@@ -1,132 +1,150 @@
-import { Mesh, MeshBuilder, Observable, TransformNode } from "@babylonjs/core";
+import { Mesh, MeshBuilder, Observable, Scene } from "@babylonjs/core";
 import { AdvancedDynamicTexture } from "@babylonjs/gui/2D";
 import { Button, Control, Grid, Image, RadioButton, Rectangle, Slider, StackPanel, TextBlock } from "@babylonjs/gui/2D/controls";
 
-enum State { MAIN = 1, PAUSE = 2, POSTTEST = 3 }
+enum State { START = 0, PAUSED = 1, MAIN = 2, POSTTEST = 3 }
 
-export class UI extends Observable<{ gameState: State, rightHanded?: boolean }>
-{
-    private _2Dmenu: AdvancedDynamicTexture;
-    
+export class UI extends Observable<{ gameState: State, rightHanded?: boolean }> {
     // menus
+    private _2Dmenu: AdvancedDynamicTexture;
     public pauseMenu: Mesh;
     public DSpopup: Mesh;
 
     // discomfort score stuff
-    private static readonly DSmin: number = 0;
-    private static readonly DSmax: number = 10;
-    private static readonly DSprompt: string = "discomfort score prompt etc";
+    private static readonly DS_MIN: number = 0;
+    private static readonly DS_MAX: number = 10;
+    private static readonly DS_PROMPT: string = "Discomfort score prompt goes here more words and stuff to fill text block does this text wrap properly? What are the margins? Is the text squashed vertically? WHAT IS LIFE";
+
+    private static readonly PRETEST_PROMPT: string = "Some instructions and stuff";
+    private static readonly POSTTEST_PROMPT: string = "Instructions for uploading data or whatever needs to happen after demo";
 
     // font
-    private static readonly fontSize: number = 36;
-    private static readonly textScaleY: number = 1.3; // for scaling text in 3D; looks weird otherwise for some unknown reason
+    private static readonly FONT_SIZE: number = 36;
+    private static readonly TEXT_SCALE_Y: number = 1.3; // for scaling text in 3D; looks weird otherwise for some unknown reason
 
-    constructor(name: string, gui3D: boolean, collider?: Mesh)
-    {
+    constructor(name: string, xr: boolean, scene?: Scene, collider?: Mesh) {
         super();
 
-        if (!gui3D)
-        {
+        if (!xr) {
             // create fullscreen UI for GUI elements
             this._2Dmenu = AdvancedDynamicTexture.CreateFullscreenUI(name);
             this._2Dmenu.idealHeight = 720;
         }
-        else
-        {
-            this.DSpopup = this._createDSPrompt(collider);
-            this.pauseMenu = this._createPauseMenu(collider);
+        else {
+            this.DSpopup = this._createDSPrompt(collider, scene);
+            this.pauseMenu = this._createPauseMenu(collider, scene);
+            this._createHandednessPrompt(scene);
         }
     }
 
-    private _createMsg(message: string) : TextBlock
-    {
+    private _createMsg(message: string, xr: boolean, width?: number, height?: number) : TextBlock {
        const textBox: TextBlock = new TextBlock("Text Box");
        textBox.text = message;
+       textBox.textWrapping = true;
        textBox.color = "black";
-       textBox.fontSize = UI.fontSize;
+       textBox.fontSize = UI.FONT_SIZE;
+
+       if (xr) {
+           textBox.scaleY = UI.TEXT_SCALE_Y;
+           textBox.widthInPixels = width;
+           textBox.heightInPixels = height;
+       }
 
        return textBox;
     }
 
-    private _createBtn(name: string) : Button
-    {
-        // // create a button
-        // const btn: Button = Button.CreateSimpleButton(name + " button", name);
-        // btn.height = "120px";
-        // btn.color = "white";
-        // btn.width = 0.2;
-        // btn.top = "-14px";
-        // btn.thickness = 0;
-        // btn.verticalAlignment = Control.VERTICAL_ALIGNMENT_BOTTOM;
-
+    private _createBtn(name: string, xr: boolean) : Button {
         const btn: Button = Button.CreateSimpleButton(name + " button", name);
         btn.widthInPixels = 300;
         btn.heightInPixels = 100;
-        // btn.scaleY = UI.textScaleY;
-        btn.fontSize = UI.fontSize;
+        btn.fontSize = UI.FONT_SIZE;
         btn.thickness = 0;    // border
 
+        if (xr) {
+            btn.scaleY = UI.TEXT_SCALE_Y;
+            btn.background = "white";
+            btn.textBlock.verticalAlignment = Control.VERTICAL_ALIGNMENT_TOP;
+        }
+        else {
+            btn.verticalAlignment = Control.VERTICAL_ALIGNMENT_BOTTOM;
+        }
+
         return btn;
     }
 
-    public create2Dui(text: string, button: string) : Button
-    {
-        let textbox: TextBlock = this._createMsg(text);
-        let btn: Button = this._createBtn(button);
-        btn.verticalAlignment = Control.VERTICAL_ALIGNMENT_BOTTOM;
+    public createStartScreen(scene: Scene) : void {
+        const text: TextBlock = this._createMsg(UI.PRETEST_PROMPT, false);
+        const btn: Button = this._createBtn("BEGIN", false);
 
-        this._2Dmenu.addControl(textbox);
+        btn.onPointerDownObservable.add(() => {
+            this.notifyObservers({ gameState: State.PAUSED });
+            scene.detachControl();
+        })
+
+        this._2Dmenu.addControl(text);
         this._2Dmenu.addControl(btn);
-
-        return btn;
     }
 
-    private _createPauseMenu(parent: Mesh) : Mesh
-    {
-        const plane: Mesh = MeshBuilder.CreatePlane("Pause Menu", { width: 1, height: 0.5 });
-        plane.position.set(parent.position.x, 1.6, parent.position.z + 1);
+    public createEndScreen() : void {
+        const text: TextBlock = this._createMsg(UI.POSTTEST_PROMPT, false);
+
+        this._2Dmenu.addControl(text);
+    }
+
+    private _createPlane(name: string, parent: Mesh, scene: Scene) : Mesh {
+        const plane: Mesh = MeshBuilder.CreatePlane(name, { width: 1, height: 0.5 }, scene);
+        plane.position.set(parent.position.x, parent.position.y, parent.position.z + 1);
         plane.setParent(parent);
         plane.isVisible = false;
 
+        return plane;
+    }
+
+    private _createGrid(name: string, width: number, height: number, background: boolean) : Grid {
+        const grid = new Grid(name);
+        grid.widthInPixels = width;
+        grid.heightInPixels = height;
+        
+        if (background) {
+            grid.background = "white";
+            grid.alpha = 0.75;
+        }
+
+        return grid;
+    }
+
+    private _createRadioBtn(text: string, group: string) : RadioButton {
+        const button: RadioButton = new RadioButton(text);
+        button.group = group;
+        button.widthInPixels = 30;
+        button.heightInPixels = 30;
+        button.color = "black";
+        button.background = "white";
+
+        return button;
+    }
+
+    private _createPauseMenu(parent: Mesh, scene: Scene) : Mesh {
+        const plane: Mesh = this._createPlane("Pause Menu", parent, scene);
         const planeADT: AdvancedDynamicTexture = AdvancedDynamicTexture.CreateForMesh(plane);
 
         // grid for organization
-        const grid = new Grid("DS score slider grid");
-        grid.background = "white";
-        grid.alpha = 0.75;
-        grid.width = 1;
-        grid.height = 0.5;
+        const grid: Grid = this._createGrid("DS score slider grid", 800, 260, true);
         grid.addRowDefinition(20, true);      // extra column for padding b/c .padding doesn't seem to work
         grid.addRowDefinition(100, true);     // return to game button
         grid.addRowDefinition(20, true);      // extra column for padding b/c .padding doesn't seem to work
         grid.addRowDefinition(100, true);     // exit game button
         grid.addRowDefinition(20, true);      // extra column for padding b/c .padding doesn't seem to work
 
-        // create return to game button
-        const resumeBtn: Button = Button.CreateSimpleButton("resume button", "Resume");
-        resumeBtn.widthInPixels = 400;
-        resumeBtn.heightInPixels = 100;
-        resumeBtn.background = "white";
-        resumeBtn.scaleY = UI.textScaleY;
-        resumeBtn.fontSize = UI.fontSize;
-        resumeBtn.thickness = 0;    // border
-        resumeBtn.textBlock.textVerticalAlignment = Control.VERTICAL_ALIGNMENT_TOP;
+        // create buttons
+        const resumeBtn: Button = this._createBtn("Resume", true);
+        const exitBtn: Button = this._createBtn("End Game", true);
 
+        // make buttons do stuff
         resumeBtn.onPointerDownObservable.add(() => {
             this.pauseMenu.isVisible = false;
             this.notifyObservers({ gameState: State.MAIN });
         });
-
-        // create exit button
-        const exitBtn: Button = Button.CreateSimpleButton("exit button", "End Game");
-        exitBtn.widthInPixels = 400;
-        exitBtn.heightInPixels = 100;
-        exitBtn.background = "white";
-        exitBtn.scaleY = UI.textScaleY;
-        exitBtn.fontSize = UI.fontSize;
-        exitBtn.thickness = 0;    // border
-        exitBtn.textBlock.textVerticalAlignment = Control.VERTICAL_ALIGNMENT_TOP;
-
         exitBtn.onPointerDownObservable.add(() => {
             this.notifyObservers({ gameState: State.POSTTEST });
             plane.dispose();
@@ -140,23 +158,14 @@ export class UI extends Observable<{ gameState: State, rightHanded?: boolean }>
         return plane;
     }
 
-    private _createDSPrompt(parent: Mesh) : Mesh
-    {
-        const plane: Mesh = MeshBuilder.CreatePlane("DS Prompt", { width: 1.5, height: 1 });
-        plane.position.set(parent.position.x, 0, parent.position.z + 0.5);
-        plane.isVisible = false;
+    private _createDSPrompt(parent: Mesh, scene: Scene) : Mesh {
+        const plane: Mesh = this._createPlane("DS Prompt", parent, scene);
 
         // do this so it shows up right in 3D. don't ask me why because I don't know. DON'T AT ME.
         const planeADT: AdvancedDynamicTexture = AdvancedDynamicTexture.CreateForMesh(plane);
 
         // create prompt text
-        const text: TextBlock = new TextBlock("DS score prompt");
-        text.text = "Discomfort score prompt goes here more words and stuff to fill text block does this text wrap properly? What are the margins? Is the text squashed vertically? WHAT IS LIFE";
-        text.textWrapping = true;
-        text.widthInPixels = 750;
-        text.heightInPixels = 450;
-        text.scaleY = UI.textScaleY;  // text looks weird in 3D otherwise for some unknown reason
-        text.fontSize = UI.fontSize;
+        const text: TextBlock = this._createMsg(UI.DS_PROMPT, true, 750, 400);
 
         // load happy and sad faces
         let sadface: Image = new Image("sadface", "assets/textures/sadface.png");
@@ -164,50 +173,23 @@ export class UI extends Observable<{ gameState: State, rightHanded?: boolean }>
 
         // create slider
         const slider: Slider = new Slider();
-        slider.minimum = UI.DSmin;
-        slider.maximum = UI.DSmax;
-        slider.value = UI.DSmax / 2;        // default value b/c slider starts in the middle
+        slider.minimum = UI.DS_MIN;
+        slider.maximum = UI.DS_MAX;
+        slider.value = UI.DS_MAX / 2;        // default value b/c slider starts in the middle
         let rating: number = slider.value;  // to store slider value
         slider.step = 1;
         slider.widthInPixels = 700;
         slider.heightInPixels = 50;
         
         // create header text to display slider value
-        const sliderHeader: TextBlock = new TextBlock("DS score slider value");
-        sliderHeader.heightInPixels = 75;
-        sliderHeader.scaleY = UI.textScaleY;
-        sliderHeader.text = slider.value.toString();
-        sliderHeader.fontSize = UI.fontSize;
+        const sliderHeader: TextBlock = this._createMsg(slider.value.toString(), true, 100, 75);
         sliderHeader.textVerticalAlignment = Control.VERTICAL_ALIGNMENT_TOP;
 
-        slider.onValueChangedObservable.add((value) => {
-            sliderHeader.text = value.toString();
-            rating = value;
-        });
-
         // create submission button
-        const submitBtn: Button = Button.CreateSimpleButton("submit button", "Submit");
-        submitBtn.widthInPixels = 300;
-        submitBtn.heightInPixels = 100;
-        submitBtn.background = "white";
-        submitBtn.scaleY = UI.textScaleY;
-        submitBtn.fontSize = UI.fontSize;
-        submitBtn.thickness = 0;    // border
-        submitBtn.textBlock.textVerticalAlignment = Control.VERTICAL_ALIGNMENT_TOP;
-
-        submitBtn.onPointerDownObservable.add(() => {
-            console.log("Discomfort score: " + rating);
-            rating = 5;     // reset rating to 5 for next time
-            plane.isVisible = false;
-            this.notifyObservers({ gameState: State.MAIN });
-        });
+        const submitBtn: Button = this._createBtn("Submit", true);
 
         // grid for aligning happy/sad faces with slider
-        const grid = new Grid("DS score slider grid");
-        grid.background = "white";
-        grid.alpha = 0.75;
-        grid.widthInPixels = 890;
-        grid.heightInPixels = 800;
+        const grid: Grid = this._createGrid("DS score slider grid", 890, 800, true);
         grid.addColumnDefinition(20, true);     // extra column for padding b/c .padding doesn't seem to work
         grid.addColumnDefinition(50, true);     // sad face
         grid.addColumnDefinition(750, true);    // textblock, slider, etc
@@ -222,6 +204,19 @@ export class UI extends Observable<{ gameState: State, rightHanded?: boolean }>
         grid.addRowDefinition(100, true);       // submit button
         grid.addRowDefinition(30, true);     // extra column for padding b/c .padding doesn't seem to work
 
+        // make buttons do stuff
+        slider.onValueChangedObservable.add((value) => {
+            sliderHeader.text = value.toString();
+            rating = value;
+        });
+
+        submitBtn.onPointerDownObservable.add(() => {
+            console.log("Discomfort score: " + rating);
+            rating = 5;     // reset rating to 5 for next time
+            plane.isVisible = false;
+            this.notifyObservers({ gameState: State.MAIN });
+        });
+
         // add controls to grid from top to bottom, left to right
         planeADT.addControl(grid);
         grid.addControl(text, 1, 2);
@@ -234,11 +229,10 @@ export class UI extends Observable<{ gameState: State, rightHanded?: boolean }>
         return plane;
     }
 
-    public getHandedness() : void
-    {
-        let rightHanded: boolean;
+    private _createHandednessPrompt(scene: Scene) : void {
+        let rightHanded: boolean = true;
 
-        const plane: Mesh = MeshBuilder.CreatePlane("Handedness prompt", { width: 1.5, height: 1 });
+        const plane: Mesh = MeshBuilder.CreatePlane("Handedness prompt", { width: 1.5, height: 1 }, scene);
         plane.position.set(0, 1.6, 2);
 
         // do this so it shows up right in 3D. don't ask me why because I don't know. DON'T AT ME.
@@ -249,9 +243,7 @@ export class UI extends Observable<{ gameState: State, rightHanded?: boolean }>
         const stackPanel: StackPanel = new StackPanel("Handedness stack panel");
 
         // grid for radio buttons
-        const grid = new Grid("Handedness grid");
-        grid.widthInPixels = 800;
-        grid.heightInPixels = 100;
+        const grid: Grid = this._createGrid("Handedness grid", 800, 100, false);
         grid.addColumnDefinition(400, true);
         grid.addColumnDefinition(400, true);
 
@@ -263,35 +255,24 @@ export class UI extends Observable<{ gameState: State, rightHanded?: boolean }>
         background.width = 0.75;
 
         // create prompt text
-        const text: TextBlock = new TextBlock("Handedness prompt");
-        text.text = "Are you left- or right-handed?";
-        text.textWrapping = true;
-        text.widthInPixels = 500;
-        text.heightInPixels = 200;
-        text.scaleY = UI.textScaleY;  // text looks weird in 3D otherwise for some unknown reason
-        text.fontSize = UI.fontSize;
+        const text: TextBlock = this._createMsg("Are you left- or right-handed?", true, 500, 200);
 
         // create radio buttons
         const leftBtn = this._createRadioBtn("Left", "Handedness");
         const rightBtn = this._createRadioBtn("Right", "Handedness");
         const leftHeader = Control.AddHeader(leftBtn, "Left-handed", "150px", { isHorizontal: true, controlFirst: true });
         const rightHeader = Control.AddHeader(rightBtn, "Right-handed", "150px", { isHorizontal: true, controlFirst: true });
+
+        // create submission button
+        const submitBtn: Button = this._createBtn("Submit", true);
+
+        // make buttons do stuff
         leftBtn.onIsCheckedChangedObservable.add(() => {
             rightHanded = false;
         });
         rightBtn.onIsCheckedChangedObservable.add(() => {
             rightHanded = true;
         });
-
-        // create submission button
-        const submitBtn: Button = Button.CreateSimpleButton("submit button", "Submit");
-        submitBtn.widthInPixels = 300;
-        submitBtn.heightInPixels = 100;
-        submitBtn.background = "white";
-        submitBtn.scaleY = UI.textScaleY;
-        submitBtn.fontSize = UI.fontSize;
-        submitBtn.thickness = 0;    // border
-        submitBtn.textBlock.textVerticalAlignment = Control.VERTICAL_ALIGNMENT_TOP;
 
         submitBtn.onPointerDownObservable.add(() => {
             this.notifyObservers({ gameState: State.MAIN, rightHanded: rightHanded });
@@ -306,32 +287,5 @@ export class UI extends Observable<{ gameState: State, rightHanded?: boolean }>
         grid.addControl(leftHeader, 0, 0);
         grid.addControl(rightHeader, 0, 1);
         stackPanel.addControl(submitBtn);
-    }
-
-    // private _createRadioBtn(text: string, group: string) : RadioButton
-    // {
-    //     const button: RadioButton = new RadioButton(text);
-    //     button.group = group;
-    //     button.widthInPixels = 20;
-    //     button.heightInPixels = 20;
-    //     button.color = "black";
-    //     button.background = "white";
-
-    //     const header = Control.AddHeader(button, text, "80px", { isHorizontal: true, controlFirst: true });
-    //     header.heightInPixels = 50;
-
-    //     return button;
-    // }
-
-    private _createRadioBtn(text: string, group: string) : RadioButton
-    {
-        const button: RadioButton = new RadioButton(text);
-        button.group = group;
-        button.widthInPixels = 30;
-        button.heightInPixels = 30;
-        button.color = "black";
-        button.background = "white";
-
-        return button;
     }
 }

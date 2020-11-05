@@ -10,18 +10,15 @@ import { WebXRDefaultExperience } from "@babylonjs/core/XR";
 import "@babylonjs/loaders/glTF/2.0/glTFLoader";
 
 
-export class Environment
-{
+export class Environment {
     private _scene: Scene;
     public xrHelper: WebXRDefaultExperience;
 
-    constructor(scene: Scene)
-    {
+    constructor(scene: Scene) {
         this._scene = scene;
     }
 
-    public async load()
-    {
+    public async load() {
         // create parent transform node (for organizing inspector)
         let parent: TransformNode = new TransformNode("Environment");
 
@@ -41,12 +38,11 @@ export class Environment
 
         // load maze
         let mazeMeshes: AbstractMesh[];
-        SceneLoader.ImportMesh("", "assets/models/", "Maze2.glb", this._scene, (meshes) =>
-        {
+        SceneLoader.ImportMesh("", "assets/models/", "12x12maze.glb", this._scene, (meshes) => {
             meshes[0].name = "Maze";
             meshes[0].setParent(parent);
-            meshes[0].scaling = new Vector3(2, 2, 2);
-            meshes[0].rotation = new Vector3(0, Math.PI, 0);
+            meshes[0].scaling = new Vector3(1, 1, 1);
+            meshes[0].rotation = new Vector3(0, Math.PI / 2, 0);
 
             mazeMeshes = meshes[0].getChildMeshes();
 
@@ -81,8 +77,7 @@ export class Environment
         ground.checkCollisions = true;
     }
 
-    private _createSky(parent: TransformNode) : void
-    {
+    private _createSky(parent: TransformNode) : void {
         // create sky material
         let skyboxMat: SkyMaterial = new SkyMaterial("sky material", this._scene);
         skyboxMat.backFaceCulling = false;
@@ -98,8 +93,7 @@ export class Environment
         skybox.material = skyboxMat;
     }
 
-    private _createLights(parent: TransformNode) : void
-    {
+    private _createLights(parent: TransformNode) : void {
         // ambient light to illuminate objects
         let ambientLight: HemisphericLight = new HemisphericLight("ambient", Vector3.Up(), this._scene);
         ambientLight.parent = parent;
@@ -112,8 +106,7 @@ export class Environment
         directionalLight.intensity = 0.6;
     }
 
-    private _createCoin(collider: Mesh, parent: TransformNode, position: Vector3) : void
-    {
+    private _createCoin(collider: Mesh, parent: TransformNode, position: Vector3) : void {
         let coin: Mesh = MeshBuilder.CreateSphere("Coin", { diameter: 0.3, segments: 32 }, this._scene);
         coin.position = position;
         coin.setParent(parent);
@@ -126,16 +119,12 @@ export class Environment
                     trigger: ActionManager.OnIntersectionEnterTrigger,
                     parameter: { mesh: collider }
                 },
-                () =>
-                {
-                    coin.dispose();
-                }
+                () => { coin.dispose(); }
             )
         )
     }
 
-    public generateCoins(collider: Mesh) : void
-    {
+    public generateCoins(collider: Mesh) : void {
         // create an array of positions for coins
         // is it possible to do new Vector3(tuple) & use array of tuples? test later
         const coins = [
