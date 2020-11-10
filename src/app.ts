@@ -17,6 +17,8 @@ import "@babylonjs/inspector";
 enum State { START = 0, PAUSED = 1, MAIN = 2, POSTTEST = 3 }
 
 export class App {
+    private static readonly TOTAL_NUM_TRIALS = 1;
+
     // general app stuff
     private _scene: Scene;
     private _canvas: HTMLCanvasElement;
@@ -30,6 +32,7 @@ export class App {
     private _environment: Environment;
     private _mainUI: UI = null;
     private _trial: Trial;
+    private _trialNumber: number = 0;
 
     // player stuff
     private _inputManager: InputManager = null;
@@ -132,14 +135,19 @@ export class App {
                 console.log(input.discomfortScore);
             }
 
-            // begin new trial
-            this._trial = new Trial(this._playerController.xrCamera, this._playerController.collider, 1, this._mainScene);
-            // trial will only notify app upon user collecting final coin:
-            this._trial.add(trialInput => {
-                this.changeGameState(State.PAUSED);
-                this._mainUI.DSpopup.isVisible = true;
-                console.log(trialInput.coinsCollected);
-            });                        
+            if (++this._trialNumber <= App.TOTAL_NUM_TRIALS) {
+                // begin new trial
+                this._trial = new Trial(this._playerController.xrCamera, this._playerController.collider, this._trialNumber, this._mainScene);
+                // trial will only notify app upon user collecting final coin:
+                this._trial.add(trialInput => {
+                    this.changeGameState(State.PAUSED);
+                    this._mainUI.DSpopup.isVisible = true;
+                    console.log(trialInput.coinsCollected);
+                }); 
+            }
+            else {
+                this.changeGameState(State.POSTTEST);
+            }                       
         }
         
         else if (input.findMyWay) {
