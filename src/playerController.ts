@@ -1,4 +1,4 @@
-import { FreeCamera, Mesh, MeshBuilder, Scene } from "@babylonjs/core";
+import { Engine, FreeCamera, Mesh, MeshBuilder, RotationGizmo, Scene } from "@babylonjs/core";
 import { WebXRCamera, WebXRDefaultExperience, WebXRSessionManager } from "@babylonjs/core/XR";
 import { Vector3 } from "@babylonjs/core/Maths/math";
 
@@ -11,7 +11,7 @@ export class PlayerController {
     private _scene: Scene;
 
     // locomotion stuff
-    private static readonly SPEED: number = 0.075;
+    private static readonly SPEED: number = 3;
 
     constructor(scene: Scene, canvas: HTMLCanvasElement) {
         this._scene = scene;
@@ -22,17 +22,8 @@ export class PlayerController {
         // set non-VR camera view to VR camera's view
         camera.fov = 90 * Math.PI / 180;
 
-        // apply gravity to camera
-        camera.applyGravity = true;
-
         // this attaches the camera to the canvas
         camera.attachControl(canvas, true);
-
-        // set ellipsoid around camera to represent user
-        camera.ellipsoid = new Vector3(1, 2, 1);
-
-        // enable collisions on user
-        camera.checkCollisions = true;
     }
 
     public async loadXR() : Promise<void> {
@@ -61,32 +52,51 @@ export class PlayerController {
         return collider;
     }
 
-    public updateMovement(value: number) : void {
+    public updateMovement(value: number, engine: Engine) : void {
         if (this.enableLocomotion) {
             let sessionManager: WebXRSessionManager = this.xrHelper.baseExperience.sessionManager;
 
+            let speed: number = engine.getDeltaTime() / 1000 * PlayerController.SPEED;
+
             // +1 = forwards, -1 = backwards
-            let input: number = -(value/Math.abs(value));
+            let input: number = -(value/Math.abs(value));   // negative b/c thumbstick values inverted
 
             // get player/camera's forward vector
             let forward: Vector3 = this.xrCamera.getDirection(Vector3.Forward());
         
             // multiply player's forward vector by direction and speed
-            forward.scaleInPlace(input * PlayerController.SPEED);
+            forward.scaleInPlace(input * speed);
 
             // why does the x value need to be negative? i don't know, but it works...
             let direction: XRRigidTransform = new XRRigidTransform({
-                x: -forward.x,
-                y: 0,   // so user can't go flying up in the air
-                z: forward.z,
+                x: -forward.x,  // why? idk? it works? will find out when I have the luxury of time?
+                y: 0,           // so user can't go flying up in the air
+                z: forward.z
             });
 
             let newPosition: XRReferenceSpace = sessionManager.referenceSpace.getOffsetReferenceSpace(direction);
 
             sessionManager.referenceSpace = newPosition;
 
+            //// this works too but ^^ is more consistent with Babylon documentation
+            //this.xrCamera.position.addInPlace(directionVector.scale(forward));
+
             // babylon is stupid and will move the collider away from camera unless you do this.
             this.collider.setPositionWithLocalVector(Vector3.Zero());
         }
+    }
+
+    public setPosition(position: Vector3) {
+        position.subtractInPlace(this.xrCamera.globalPosition);
+
+        let direction: XRRigidTransform = new XRRigidTransform({
+            x: position.x,
+            y: 1.6,
+            z: position.z
+        });
+
+        let newPosition: XRReferenceSpace = this.xrHelper.baseExperience.sessionManager.referenceSpace.getOffsetReferenceSpace(direction);
+
+        this.xrHelper.baseExperience.sessionManager.referenceSpace = newPosition;
     }
 }

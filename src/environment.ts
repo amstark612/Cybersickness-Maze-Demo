@@ -1,7 +1,6 @@
 import { DirectionalLight, HemisphericLight, Scene, SceneLoader } from "@babylonjs/core";
 import { StandardMaterial, Texture } from "@babylonjs/core/Materials";
 import { SkyMaterial } from "@babylonjs/materials/sky";
-import { ActionManager, ExecuteCodeAction } from "@babylonjs/core/Actions";
 import { AbstractMesh, Mesh, MeshBuilder, TransformNode } from "@babylonjs/core/Meshes";
 import { Color3, Vector3 } from "@babylonjs/core/Maths/math";
 import { WebXRDefaultExperience } from "@babylonjs/core/XR";
@@ -38,17 +37,16 @@ export class Environment {
 
         // load maze
         let mazeMeshes: AbstractMesh[];
-        SceneLoader.ImportMesh("", "assets/models/", "12x12maze.glb", this._scene, (meshes) => {
+        SceneLoader.ImportMesh("", "assets/models/", "QMazeEngine.glb", this._scene, (meshes) => {
             meshes[0].name = "Maze";
             meshes[0].setParent(parent);
-            meshes[0].scaling = new Vector3(1, 1, 1);
+            meshes[0].scaling = new Vector3(1, 0.5, 1);
             meshes[0].rotation = new Vector3(0, Math.PI / 2, 0);
 
             mazeMeshes = meshes[0].getChildMeshes();
 
             mazeMeshes.forEach(element => {
-                if (element.getClassName() == "Mesh")
-                {
+                if (element.getClassName() == "Mesh") {
                     element.checkCollisions = true;
                     element.material = wallMaterial;
                 }
@@ -63,14 +61,10 @@ export class Environment {
 
         // enable collisions
         this._scene.collisionsEnabled = true;
-        
-        // // create invisible ground for physics collisions
-        // environment!.ground!.isVisible = false;
-        // environment!.ground!.position = new Vector3(0, 0, 0);
 
-        let ground: Mesh = MeshBuilder.CreateGround("ground", { width: 100, height: 100 }, this._scene);
+        let ground: Mesh = MeshBuilder.CreateGround("ground", { width: 200, height: 200 }, this._scene);
         ground.setParent(parent);
-        ground.position.set(0, 0.04, 0);
+        ground.position.set(-75, 0.04, 75);
         ground.material = groundMaterial;
 
         // Enable collisions on ground
@@ -88,7 +82,7 @@ export class Environment {
         skyboxMat.sunPosition = new Vector3(10, 50, 10);
 
         // create skybox
-        const skybox: Mesh = Mesh.CreateBox("skyBox", 100, this._scene);
+        const skybox: Mesh = Mesh.CreateBox("skyBox", 300, this._scene);
         skybox.setParent(parent);
         skybox.material = skyboxMat;
     }
@@ -104,42 +98,5 @@ export class Environment {
         let directionalLight: DirectionalLight = new DirectionalLight("sunlight", Vector3.Down(), this._scene);
         directionalLight.parent = parent;
         directionalLight.intensity = 0.6;
-    }
-
-    private _createCoin(collider: Mesh, parent: TransformNode, position: Vector3) : void {
-        let coin: Mesh = MeshBuilder.CreateSphere("Coin", { diameter: 0.3, segments: 32 }, this._scene);
-        coin.position = position;
-        coin.setParent(parent);
-        coin.checkCollisions = true;
-
-        coin.actionManager = new ActionManager(this._scene);
-        coin.actionManager.registerAction(
-            new ExecuteCodeAction(
-                {
-                    trigger: ActionManager.OnIntersectionEnterTrigger,
-                    parameter: { mesh: collider }
-                },
-                () => { coin.dispose(); }
-            )
-        )
-    }
-
-    public generateCoins(collider: Mesh) : void {
-        // create an array of positions for coins
-        // is it possible to do new Vector3(tuple) & use array of tuples? test later
-        const coins = [
-            // new Vector3(0, 1, 2),
-            new Vector3(0, 1, 4),
-            new Vector3(0, 1, 6),
-            new Vector3(1, 1, 6),
-            new Vector3(3, 1, 6)
-        ]
-
-        // create a transform node as parent (for organizing inspector)
-        let parent: TransformNode = new TransformNode("Coins");
-
-        coins.forEach((position) => {
-            this._createCoin(collider, parent, position);
-        });
     }
 }

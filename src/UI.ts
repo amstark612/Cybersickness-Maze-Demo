@@ -2,9 +2,12 @@ import { Mesh, MeshBuilder, Observable, Scene } from "@babylonjs/core";
 import { AdvancedDynamicTexture } from "@babylonjs/gui/2D";
 import { Button, Control, Grid, Image, RadioButton, Rectangle, Slider, StackPanel, TextBlock } from "@babylonjs/gui/2D/controls";
 
+// custom classes
+import { UIInfo } from "./UIInfo";
+
 enum State { START = 0, PAUSED = 1, MAIN = 2, POSTTEST = 3 }
 
-export class UI extends Observable<{ gameState: State, rightHanded?: boolean }> {
+export class UI extends Observable<UIInfo> {
     // menus
     private _2Dmenu: AdvancedDynamicTexture;
     public pauseMenu: Mesh;
@@ -77,7 +80,7 @@ export class UI extends Observable<{ gameState: State, rightHanded?: boolean }> 
         const btn: Button = this._createBtn("BEGIN", false);
 
         btn.onPointerDownObservable.add(() => {
-            this.notifyObservers({ gameState: State.PAUSED });
+            this.notifyObservers(new UIInfo(State.PAUSED, false));
             scene.detachControl();
         })
 
@@ -129,31 +132,41 @@ export class UI extends Observable<{ gameState: State, rightHanded?: boolean }> 
         const planeADT: AdvancedDynamicTexture = AdvancedDynamicTexture.CreateForMesh(plane);
 
         // grid for organization
-        const grid: Grid = this._createGrid("DS score slider grid", 800, 260, true);
+        const grid: Grid = this._createGrid("DS score slider grid", 800, 380, true);
         grid.addRowDefinition(20, true);      // extra column for padding b/c .padding doesn't seem to work
         grid.addRowDefinition(100, true);     // return to game button
+        grid.addRowDefinition(20, true);      // extra column for padding b/c .padding doesn't seem to work
+        grid.addRowDefinition(100, true);     // find my way button
         grid.addRowDefinition(20, true);      // extra column for padding b/c .padding doesn't seem to work
         grid.addRowDefinition(100, true);     // exit game button
         grid.addRowDefinition(20, true);      // extra column for padding b/c .padding doesn't seem to work
 
         // create buttons
         const resumeBtn: Button = this._createBtn("Resume", true);
+        const findMyWayBtn: Button = this._createBtn("Find My Way", true);
         const exitBtn: Button = this._createBtn("End Game", true);
 
         // make buttons do stuff
         resumeBtn.onPointerDownObservable.add(() => {
             this.pauseMenu.isVisible = false;
-            this.notifyObservers({ gameState: State.MAIN });
+            this.notifyObservers(new UIInfo(State.MAIN, false));
         });
+        findMyWayBtn.onPointerDownObservable.add(() => {
+            let notification: UIInfo = new UIInfo(State.MAIN, false);
+            notification.findMyWay = true;
+            this.pauseMenu.isVisible = false;
+            this.notifyObservers(notification);
+        })
         exitBtn.onPointerDownObservable.add(() => {
-            this.notifyObservers({ gameState: State.POSTTEST });
+            this.notifyObservers(new UIInfo(State.POSTTEST, false));
             plane.dispose();
         });
 
         // attach controls
         planeADT.addControl(grid);
         grid.addControl(resumeBtn, 1, 0);
-        grid.addControl(exitBtn, 3, 0);
+        grid.addControl(findMyWayBtn, 3, 0);
+        grid.addControl(exitBtn, 5, 0);
 
         return plane;
     }
@@ -211,10 +224,11 @@ export class UI extends Observable<{ gameState: State, rightHanded?: boolean }> 
         });
 
         submitBtn.onPointerDownObservable.add(() => {
-            console.log("Discomfort score: " + rating);
+            let notification: UIInfo = new UIInfo(State.MAIN, true);
+            notification.discomfortScore = rating;
             rating = 5;     // reset rating to 5 for next time
             plane.isVisible = false;
-            this.notifyObservers({ gameState: State.MAIN });
+            this.notifyObservers(notification);
         });
 
         // add controls to grid from top to bottom, left to right
@@ -275,7 +289,9 @@ export class UI extends Observable<{ gameState: State, rightHanded?: boolean }> 
         });
 
         submitBtn.onPointerDownObservable.add(() => {
-            this.notifyObservers({ gameState: State.MAIN, rightHanded: rightHanded });
+            let notification: UIInfo = new UIInfo(State.MAIN, true);
+            notification.rightHanded = rightHanded;
+            this.notifyObservers(notification);
             plane.dispose();
         });
 

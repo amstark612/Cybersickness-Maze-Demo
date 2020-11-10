@@ -1,20 +1,18 @@
-import { Color4, Engine, FreeCamera, Scene } from "@babylonjs/core";
+import { Engine, FreeCamera, Scene } from "@babylonjs/core";
 import { WebXRControllerComponent, WebXRInputSource } from "@babylonjs/core/XR";
-import { MeshBuilder } from "@babylonjs/core/Meshes";
-import { ActionManager, ExecuteCodeAction } from "@babylonjs/core";
 import { Vector3 } from "@babylonjs/core/Maths/math";
-import { Button } from "@babylonjs/gui/2D/controls";
 
 // custom classes
 import { Environment } from "./Environment";
 import { UI } from "./UI";
+import { UIInfo } from "./UIInfo";
 import { PlayerController } from "./PlayerController";
 import { InputManager } from "./InputManager";
+import { Trial } from "./Trial";
 
 // side effects
 import "@babylonjs/core/Debug/debugLayer";
 import "@babylonjs/inspector";
-
 
 enum State { START = 0, PAUSED = 1, MAIN = 2, POSTTEST = 3 }
 
@@ -31,6 +29,7 @@ export class App {
     // game state stuff
     private _environment: Environment;
     private _mainUI: UI = null;
+    private _trial: Trial;
 
     // player stuff
     private _inputManager: InputManager = null;
@@ -105,15 +104,11 @@ export class App {
         }
     }
 
-    public returnToLastCheckpoint() : void {
-
-    }
-
     // executed when notified by input manager
     private _processControllerInput(component: WebXRControllerComponent) : void {
         // for locomotion
         if (component.id == "xr-standard-thumbstick") {
-            this._playerController.updateMovement(component.axes.y);
+            this._playerController.updateMovement(component.axes.y, this._engine);
         }
         // for calling pause menu
         else if (component.id == "a-button" || component.id == "x-button") {
@@ -123,15 +118,35 @@ export class App {
     }
 
     // executed when notified by UI
-    private _processUInotifications(input: { gameState: State, rightHanded?: boolean }) : void {
-        // set handedness before beginning demo
-        if (input.rightHanded!) {
-            this._inputManager.setPrimaryController(input.rightHanded);
+    private _processUInotifications(input: UIInfo) : void {
+        if (input.newTrial) {
+            // ugghhhh is there some other elegant way to get rid of this special case
+            if (input.rightHanded != null) {
+                // set primary controller
+                this._inputManager.setPrimaryController(input.rightHanded);                
+            }
+            
+            // again, how to get rid of this?
+            if (input.discomfortScore >= 0) {
+                // check if there is a discomfort score and do something with it if there is
+                console.log(input.discomfortScore);
+            }
+
+            // begin new trial
+            this._trial = new Trial(this._playerController.xrCamera, this._playerController.collider, 1, this._mainScene);
+            // trial will only notify app upon user collecting final coin:
+            this._trial.add(trialInput => {
+                this.changeGameState(State.PAUSED);
+                this._mainUI.DSpopup.isVisible = true;
+                console.log(trialInput.coinsCollected);
+            });                        
+        }
+        
+        else if (input.findMyWay) {
+            this._playerController.setPosition(this._trial.lastPosition);
         }
 
         this.changeGameState(input.gameState);
-
-        console.log("hello");
     }
 
     private async _setUpMainScene() : Promise<void> {
@@ -145,24 +160,24 @@ export class App {
                 this._playerController = new PlayerController(this._mainScene, this._canvas);
         });
 
-        // set up XR camera, collider, controllers
-        await this._playerController.loadXR().then(() => {
-            this._playerController.xrHelper.input.onControllerAddedObservable.add((inputSource) => {
-                this._setUpXR(inputSource);
+        // // set up XR camera, collider, controllers
+        // await this._playerController.loadXR().then(() => {
+        //     this._playerController.xrHelper.input.onControllerAddedObservable.add((inputSource) => {
+        //         this._setUpXR(inputSource);
 
-                // make it rain coins now that we have a player collider
-                this._environment.generateCoins(this._playerController.collider);
+        //         // make it rain coins now that we have a player collider
+        //         this._environment.generateCoins(this._playerController.collider);
 
-                // hide loading screen and reattach control now that scene is ready
-                this._engine.hideLoadingUI();
-                this._scene.attachControl();
-            });
-        });
+        //         // hide loading screen and reattach control now that scene is ready
+        //         this._engine.hideLoadingUI();
+        //         this._scene.attachControl();
+        //     });
+        // });
 
-        // create (an initially invisible) pause menu & discomfort score prompt
-        this._mainUI = new UI("Player UI", true, this._mainScene, this._playerController.collider);
-        // subscribe to UI notifications for pausing/unpausing game during popups & getting handedness
-        this._mainUI.add((input) => { this._processUInotifications(input) });
+        // // create (an initially invisible) pause menu & discomfort score prompt
+        // this._mainUI = new UI("Player UI", true, this._mainScene, this._playerController.collider);
+        // // subscribe to UI notifications for pausing/unpausing game during popups & getting handedness
+        // this._mainUI.add((input) => this._processUInotifications(input));
     }
 
     // sets up XR & input manager
@@ -195,9 +210,8 @@ export class App {
         // create fullscreen UI for GUI elements
         const guiMenu: UI = new UI("UI", false);
         // subscribe to UI notifications so start button works
-        guiMenu.add((input) => this._processUInotifications(input));
+        guiMenu.add(input => this._processUInotifications(input));
 
-        // FIX ME PLEASE
         await this._setUpMainScene().then(() => {
                 guiMenu.createStartScreen(this._scene);
         });
@@ -221,54 +235,22 @@ export class App {
         this._state = State.PAUSED;
         this._scene = this._mainScene;
 
-        // // set up XR camera, collider, controllers
-        // await this._playerController.loadXR().then(() => {
-        //     this._playerController.xrHelper.input.onControllerAddedObservable.add((inputSource) => {
-        //         this._setUpXR(inputSource);
+        // this needs to stay in this function so user doesn't enter XR BEFORE hitting "Begin"
+        // set up XR camera, collider, controllers
+        await this._playerController.loadXR().then(() => {
+            this._playerController.xrHelper.input.onControllerAddedObservable.add(inputSource => {
+                this._setUpXR(inputSource);
 
-        //         // make it rain coins now that we have a player collider
-        //         this._environment.generateCoins(this._playerController.collider);
+                // hide loading screen and reattach control now that scene is ready
+                this._engine.hideLoadingUI();
+                this._scene.attachControl();
+            });
+        });
 
-        //         // hide loading screen and reattach control now that scene is ready
-        //         this._engine.hideLoadingUI();
-        //         this._scene.attachControl();
-        //     });
-        // });
-
-        // // create (an initially invisible) pause menu & discomfort score prompt
-        // this._mainUI = new UI("Player UI", true, this._playerController.collider);
-        // // subscribe to UI notifications for pausing/unpausing game during popups & getting handedness
-        // this._mainUI.add((input) => { this._processUInotifications(input) });
-        // // get handedness
-        // this._mainUI.getHandedness();
-
-
-
-        // a bunch of temporary stuff please clean me up
-
-
-        // Our built-in 'sphere' shape.
-        let sphere = MeshBuilder.CreateSphere("sphere", { diameterX: 0.3, diameterY: 0.3, diameterZ: 0.1, segments: 32 }, this._scene);
-        sphere.checkCollisions = true;
-
-        // Move the sphere upward and forward
-        sphere.position = new Vector3(0, 1, 2);
-
-        // Add action to sphere
-        sphere.actionManager = new ActionManager(this._scene);
-        // sphere.actionManager.registerAction(
-        //     new ExecuteCodeAction(
-        //         { 
-        //             trigger: ActionManager.OnIntersectionEnterTrigger,
-        //             parameter: { mesh: this._playerController.collider }
-        //         },
-        //         () => 
-        //         {
-        //             this._UI.DSpopup.isVisible = true;
-        //             sphere.dispose();
-        //         }
-        //     )
-        // );
+        // create (an initially invisible) pause menu & discomfort score prompt
+        this._mainUI = new UI("Player UI", true, this._mainScene, this._playerController.collider);
+        // subscribe to UI notifications for pausing/unpausing game during popups & getting handedness
+        this._mainUI.add(input => this._processUInotifications(input));
 
         this._scene.debugLayer.show();
     }
