@@ -1,4 +1,4 @@
-import { Engine, FreeCamera, Mesh, MeshBuilder, RotationGizmo, Scene } from "@babylonjs/core";
+import { Engine, FreeCamera, Mesh, MeshBuilder, Scene } from "@babylonjs/core";
 import { WebXRCamera, WebXRDefaultExperience, WebXRSessionManager } from "@babylonjs/core/XR";
 import { Vector3 } from "@babylonjs/core/Maths/math";
 
@@ -86,17 +86,17 @@ export class PlayerController {
         }
     }
 
-    public setPosition(position: Vector3) {
-        position.subtractInPlace(this.xrCamera.globalPosition);
+    public setPosition(globalPosition: Vector3) {
+        let sessionManager: WebXRSessionManager = this.xrHelper.baseExperience.sessionManager;
 
-        let direction: XRRigidTransform = new XRRigidTransform({
-            x: position.x,
-            y: 1.6,
-            z: position.z
-        });
+        // reset position to origin
+        sessionManager.resetReferenceSpace();
 
-        let newPosition: XRReferenceSpace = this.xrHelper.baseExperience.sessionManager.referenceSpace.getOffsetReferenceSpace(direction);
+        globalPosition.y = this.xrCamera.globalPosition.y;
 
-        this.xrHelper.baseExperience.sessionManager.referenceSpace = newPosition;
+        // ummmm, positioning cam via reference space doesn't work?
+        // idk why?
+        // will figure it out when i have time...?
+        this.xrCamera.position = globalPosition;
     }
 }

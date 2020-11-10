@@ -54,7 +54,6 @@ export class Trial extends Observable<{coinsCollected: number, duration: number}
                             }
 
                             if (index == coinMeshes.length - 1) {
-                                console.log("hello from last coin");
                                 this.notifyObservers({ coinsCollected: this._coinsCollected, duration: this._startTime });
                             }
                         }
@@ -64,21 +63,34 @@ export class Trial extends Observable<{coinsCollected: number, duration: number}
 
             // get first coin's position & rotation
             this._lastPosition = coinMeshes[0].absolutePosition;
-            this._lastPosition.y = 30;
             this._lastOrientation = Quaternion.FromEulerAngles(0, (coinMeshes[0].rotation.y - 90) * Math.PI / 180, 0);
 
             // hide first coin b/c that's where user starts
             coinMeshes[0].isVisible = false;
+            // set coin height b/c babylon is weird and user will be stuck at coin's height...? 
+            // even though we will be setting player position to this._lastPosition instead of actual coin's position?
+            // this is really really really dumb??????
+            // find better sol later?
+            coinMeshes[0].position.y = 2;
 
-            console.log("initial position & orientation: " + player.position + ", " + player.rotationQuaternion);
+            console.log("this should be the same as the next line below except for the y value: " + this._lastPosition);
+            console.log(coinMeshes[0].absolutePosition);
+            console.log(coinMeshes[0].position);
+
+            console.log("initial position before trial: " + player.position);
+            console.log("initial absolute pos before trial: " + player.globalPosition);
+            console.log("initial quat before trial: " + player.rotationQuaternion);
+            console.log("initial abso rotation before trial: " + player.absoluteRotation);
 
             // put player in starting position & rotation
             player.position = this._lastPosition;
             player.rotationQuaternion.multiplyInPlace(this._lastOrientation);
 
 
-            console.log("initial trial position & orientation: " + player.position + ", " + player.rotationQuaternion);
-            console.log("absolute rotation " + player.absoluteRotation);
+            console.log("new position: " + player.position);
+            console.log("new absolute pos: " + player.globalPosition);
+            console.log("new quat: " + player.rotationQuaternion);
+            console.log("new abso: " + player.absoluteRotation);
 
             this._coinsCollected = 0;
         });

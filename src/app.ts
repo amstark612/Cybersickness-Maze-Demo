@@ -120,7 +120,7 @@ export class App {
     // executed when notified by UI
     private _processUInotifications(input: UIInfo) : void {
         if (input.newTrial) {
-            // ugghhhh is there some other elegant way to get rid of this special case
+            // ugghhhh is there some elegant way to get rid of this special case?
             if (input.rightHanded != null) {
                 // set primary controller
                 this._inputManager.setPrimaryController(input.rightHanded);                
