@@ -9,7 +9,7 @@ import { Observable } from "@babylonjs/core/Misc/observable";
 
 export class Trial extends Observable<{coinsCollected: number, duration: number}> {
     private _lastPosition: Vector3;
-    private _lastOrientation: Quaternion;
+    private _lastAngle: number;
     private _coinsCollected: number;
     private _startTime: number;
 
@@ -29,6 +29,7 @@ export class Trial extends Observable<{coinsCollected: number, duration: number}
             // get actual coins
             coinMeshes = meshes[0].getChildMeshes();
 
+            // do not include first coin - first coin is just placemarker for starting position
             for (let index: number = 1; index < coinMeshes.length; index++) {
                 // scale coins here b/c too lazy to change them in Unity
                 coinMeshes[index].scaling = new Vector3(0.3, 0.02, 0.3);
@@ -45,14 +46,17 @@ export class Trial extends Observable<{coinsCollected: number, duration: number}
                             parameter: { mesh: collider }
                         },
                         () => {
+                            // store these in case user gets lost so we can plop them back in the right place
                             this._lastPosition = coinMeshes[index].absolutePosition;
-                            this._lastOrientation = Quaternion.FromEulerAngles(0, (coinMeshes[index].rotation.y - 90) * Math.PI / 180, 0);
+                            this._lastAngle = coinMeshes[index].absoluteRotationQuaternion.toEulerAngles().y + Math.PI;
+
                             this._coinsCollected++;
 
                             if (coinMeshes[index].getClassName() == "InstancedMesh") {
                                 coinMeshes[index].dispose();  // don't dispose of source coin or they'll all disappear
                             }
 
+                            // upon collecting last coin, let app know trial is over
                             if (index == coinMeshes.length - 1) {
                                 this.notifyObservers({ coinsCollected: this._coinsCollected, duration: this._startTime });
                             }
@@ -63,7 +67,11 @@ export class Trial extends Observable<{coinsCollected: number, duration: number}
 
             // get first coin's position & rotation
             this._lastPosition = coinMeshes[0].absolutePosition;
-            this._lastOrientation = Quaternion.FromEulerAngles(0, (coinMeshes[0].rotation.y - 90) * Math.PI / 180, 0);
+            this._lastAngle = coinMeshes[0].absoluteRotationQuaternion.toEulerAngles().y + Math.PI;
+
+
+            // // -45 degrees b/c how I rotated cylinder to make coin and Unity and yeah just live with it
+            // this._lastRotation = coinMeshes[0].absoluteRotationQuaternion.z - Math.PI / 4;
 
             // hide first coin b/c that's where user starts
             coinMeshes[0].isVisible = false;
@@ -71,26 +79,20 @@ export class Trial extends Observable<{coinsCollected: number, duration: number}
             // even though we will be setting player position to this._lastPosition instead of actual coin's position?
             // this is really really really dumb??????
             // find better sol later?
-            coinMeshes[0].position.y = 2;
-
-            console.log("this should be the same as the next line below except for the y value: " + this._lastPosition);
-            console.log(coinMeshes[0].absolutePosition);
-            console.log(coinMeshes[0].position);
-
-            console.log("initial position before trial: " + player.position);
-            console.log("initial absolute pos before trial: " + player.globalPosition);
-            console.log("initial quat before trial: " + player.rotationQuaternion);
-            console.log("initial abso rotation before trial: " + player.absoluteRotation);
+            coinMeshes[0].position.y = 2.15;
 
             // put player in starting position & rotation
             player.position = this._lastPosition;
-            player.rotationQuaternion.multiplyInPlace(this._lastOrientation);
 
+            // get user's y-rotation
+            let camAngle: number = player.absoluteRotation.toEulerAngles().y;
 
-            console.log("new position: " + player.position);
-            console.log("new absolute pos: " + player.globalPosition);
-            console.log("new quat: " + player.rotationQuaternion);
-            console.log("new abso: " + player.absoluteRotation);
+            // get difference between current and desired y-rotation
+            let angle: number = this._lastAngle - camAngle;
+
+            // rotate user to correct rotation (why -90 degress? honestly, idk. it just works)
+            player.rotationQuaternion.multiplyInPlace(Quaternion.FromEulerAngles(0, angle - Math.PI / 2, 0));
+
 
             this._coinsCollected = 0;
         });
@@ -102,7 +104,7 @@ export class Trial extends Observable<{coinsCollected: number, duration: number}
         return this._lastPosition;
     }
 
-    public get lastOrientation() {
-        return this._lastOrientation;
+    public get lastAngle() {
+        return this._lastAngle;
     }
 }

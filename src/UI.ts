@@ -36,7 +36,9 @@ export class UI extends Observable<UIInfo> {
         else {
             this.DSpopup = this._createDSPrompt(collider, scene);
             this.pauseMenu = this._createPauseMenu(collider, scene);
-            this._createHandednessPrompt(scene);
+            // this._createPoster();
+
+            // this._createHandednessPrompt(scene);
         }
     }
 
@@ -171,6 +173,29 @@ export class UI extends Observable<UIInfo> {
         return plane;
     }
 
+    public createPoster(scene: Scene) : Mesh {
+        // create poster
+        const plane: Mesh = this._createPlane("Poster", null, scene);
+
+        // do this so it shows up right in 3D. dunno why.
+        const planeADT: AdvancedDynamicTexture = AdvancedDynamicTexture.CreateForMesh(plane);
+
+        // create prompt
+        const text: TextBlock = this._createMsg("Please remain still and look at this picture for the 60 seconds. The picture will automatically disappear after 60 seconds.", true, 400, 400);
+
+        // load puppy pic!
+        let puppy: Image = new Image("puppy", "assets/textures/puppy.png");
+
+        // create stack panel for vertical organization
+        const stackPanel: StackPanel = new StackPanel();
+
+        planeADT.addControl(stackPanel);
+        stackPanel.addControl(text);
+        stackPanel.addControl(puppy);
+
+        return plane;
+    }
+
     private _createDSPrompt(parent: Mesh, scene: Scene) : Mesh {
         const plane: Mesh = this._createPlane("DS Prompt", parent, scene);
 
@@ -243,7 +268,7 @@ export class UI extends Observable<UIInfo> {
         return plane;
     }
 
-    private _createHandednessPrompt(scene: Scene) : void {
+    public createHandednessPrompt(scene: Scene) : void {
         let rightHanded: boolean = true;
 
         const plane: Mesh = MeshBuilder.CreatePlane("Handedness prompt", { width: 1.5, height: 1 }, scene);

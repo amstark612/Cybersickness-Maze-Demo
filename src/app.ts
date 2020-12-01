@@ -1,4 +1,4 @@
-import { Engine, FreeCamera, Scene } from "@babylonjs/core";
+import { Engine, FreeCamera, Mesh, Scene } from "@babylonjs/core";
 import { WebXRControllerComponent, WebXRInputSource } from "@babylonjs/core/XR";
 import { Vector3 } from "@babylonjs/core/Maths/math";
 
@@ -151,6 +151,7 @@ export class App {
         }
         
         else if (input.findMyWay) {
+            this._playerController.setOrientation(this._trial.lastAngle);
             this._playerController.setPosition(this._trial.lastPosition);
         }
 
@@ -257,8 +258,17 @@ export class App {
 
         // create (an initially invisible) pause menu & discomfort score prompt
         this._mainUI = new UI("Player UI", true, this._mainScene, this._playerController.collider);
+        this._mainUI.createHandednessPrompt(this._scene);
         // subscribe to UI notifications for pausing/unpausing game during popups & getting handedness
         this._mainUI.add(input => this._processUInotifications(input));
+
+        // have user stand in place and stare at poster for 60 seconds while collecting motion tracking data
+        // let poster: Mesh = this._mainUI.createPoster(this._scene);
+        // await new Promise(resolve => setTimeout(resolve, 60000));
+        // poster.dispose();
+
+        // // then get handedness
+        // this._mainUI.createHandednessPrompt(this._scene);
 
         this._scene.debugLayer.show();
     }

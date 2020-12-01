@@ -22,6 +22,7 @@ export class InputManager extends Observable<WebXRControllerComponent> {
         this._onRightTrigger(this._rightController?.motionController?.getComponent("xr-standard-trigger"));
         this._onLeftX(this._leftController?.motionController?.getComponent("x-button"));
         this._onRightA(this._rightController?.motionController?.getComponent("a-button"));
+        // this._onRightB(this._rightController?.motionController?.getComponent("b-button"));
         this._onPrimaryThumbstick(this._primaryController?.motionController?.getComponent("xr-standard-thumbstick"));
     }
 
@@ -50,4 +51,10 @@ export class InputManager extends Observable<WebXRControllerComponent> {
             this.notifyObservers(component);
         }
     }
+
+    // private _onRightB(component?: WebXRControllerComponent) : void {
+    //     if (component?.changes.pressed) {
+    //         this.notifyObservers(component);
+    //     }
+    // }
 }

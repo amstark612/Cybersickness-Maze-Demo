@@ -1,6 +1,6 @@
 import { Engine, FreeCamera, Mesh, MeshBuilder, Scene } from "@babylonjs/core";
 import { WebXRCamera, WebXRDefaultExperience, WebXRSessionManager } from "@babylonjs/core/XR";
-import { Vector3 } from "@babylonjs/core/Maths/math";
+import { Quaternion, Vector3 } from "@babylonjs/core/Maths/math";
 
 export class PlayerController {
     public xrHelper: WebXRDefaultExperience;
@@ -87,16 +87,22 @@ export class PlayerController {
     }
 
     public setPosition(globalPosition: Vector3) {
-        let sessionManager: WebXRSessionManager = this.xrHelper.baseExperience.sessionManager;
-
-        // reset position to origin
-        sessionManager.resetReferenceSpace();
-
         globalPosition.y = this.xrCamera.globalPosition.y;
 
         // ummmm, positioning cam via reference space doesn't work?
         // idk why?
         // will figure it out when i have time...?
         this.xrCamera.position = globalPosition;
+    }
+
+    public setOrientation(absoluteAngle: number) {
+        // get user's y-rotation
+        let camAngle: number = this.xrCamera.absoluteRotation.toEulerAngles().y;
+
+        // get difference between current and desired y-rotation
+        let angle: number = absoluteAngle - camAngle;
+
+        // reorient user
+        this.xrCamera.rotationQuaternion.multiplyInPlace(Quaternion.FromEulerAngles(0, angle, 0));
     }
 }
