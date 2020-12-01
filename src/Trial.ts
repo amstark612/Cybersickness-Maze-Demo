@@ -65,14 +65,6 @@ export class Trial extends Observable<{coinsCollected: number, duration: number}
                 );
             }
 
-            // get first coin's position & rotation
-            this._lastPosition = coinMeshes[0].absolutePosition;
-            this._lastAngle = coinMeshes[0].absoluteRotationQuaternion.toEulerAngles().y + Math.PI;
-
-
-            // // -45 degrees b/c how I rotated cylinder to make coin and Unity and yeah just live with it
-            // this._lastRotation = coinMeshes[0].absoluteRotationQuaternion.z - Math.PI / 4;
-
             // hide first coin b/c that's where user starts
             coinMeshes[0].isVisible = false;
             // set coin height b/c babylon is weird and user will be stuck at coin's height...? 
@@ -80,6 +72,10 @@ export class Trial extends Observable<{coinsCollected: number, duration: number}
             // this is really really really dumb??????
             // find better sol later?
             coinMeshes[0].position.y = 2.15;
+
+            // get first coin's position & rotation
+            this._lastPosition = coinMeshes[0].absolutePosition;
+            this._lastAngle = coinMeshes[0].absoluteRotationQuaternion.toEulerAngles().y + Math.PI;
 
             // put player in starting position & rotation
             player.position = this._lastPosition;
@@ -92,7 +88,6 @@ export class Trial extends Observable<{coinsCollected: number, duration: number}
 
             // rotate user to correct rotation (why -90 degress? honestly, idk. it just works)
             player.rotationQuaternion.multiplyInPlace(Quaternion.FromEulerAngles(0, angle - Math.PI / 2, 0));
-
 
             this._coinsCollected = 0;
         });

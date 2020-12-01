@@ -15,7 +15,7 @@ export class UI extends Observable<UIInfo> {
 
     // discomfort score stuff
     private static readonly DS_MIN: number = 0;
-    private static readonly DS_MAX: number = 10;
+    private static readonly DS_MAX: number = 20;
     private static readonly DS_PROMPT: string = "Discomfort score prompt goes here more words and stuff to fill text block does this text wrap properly? What are the margins? Is the text squashed vertically? WHAT IS LIFE";
 
     private static readonly PRETEST_PROMPT: string = "Some instructions and stuff";
@@ -36,9 +36,6 @@ export class UI extends Observable<UIInfo> {
         else {
             this.DSpopup = this._createDSPrompt(collider, scene);
             this.pauseMenu = this._createPauseMenu(collider, scene);
-            // this._createPoster();
-
-            // this._createHandednessPrompt(scene);
         }
     }
 
@@ -173,25 +170,32 @@ export class UI extends Observable<UIInfo> {
         return plane;
     }
 
-    public createPoster(scene: Scene) : Mesh {
+    public createPoster(parent: Mesh, scene: Scene) : Mesh {
         // create poster
-        const plane: Mesh = this._createPlane("Poster", null, scene);
+        const plane: Mesh = MeshBuilder.CreatePlane("Poster", { width: 1, height: 1.2 }, scene);
+        plane.position.set(parent.position.x, parent.position.y + 1.5, parent.position.z + 3);
 
         // do this so it shows up right in 3D. dunno why.
         const planeADT: AdvancedDynamicTexture = AdvancedDynamicTexture.CreateForMesh(plane);
 
+        // create background for prompt
+        const background: Rectangle = new Rectangle();
+        background.widthInPixels = 700;
+        background.heightInPixels = 400;
+        background.background = "white";
+        background.alpha = 0.75;
+
         // create prompt
-        const text: TextBlock = this._createMsg("Please remain still and look at this picture for the 60 seconds. The picture will automatically disappear after 60 seconds.", true, 400, 400);
+        const text: TextBlock = this._createMsg("Please remain still and look at this picture for the next 60 seconds. The picture will automatically disappear after 60 seconds.", true, 700, 400);
+        text.fontSize = 42;
 
         // load puppy pic!
         let puppy: Image = new Image("puppy", "assets/textures/puppy.png");
+        puppy.autoScale = true;
 
-        // create stack panel for vertical organization
-        const stackPanel: StackPanel = new StackPanel();
-
-        planeADT.addControl(stackPanel);
-        stackPanel.addControl(text);
-        stackPanel.addControl(puppy);
+        planeADT.addControl(puppy);
+        planeADT.addControl(background);
+        background.addControl(text);
 
         return plane;
     }
@@ -251,7 +255,7 @@ export class UI extends Observable<UIInfo> {
         submitBtn.onPointerDownObservable.add(() => {
             let notification: UIInfo = new UIInfo(State.MAIN, true);
             notification.discomfortScore = rating;
-            rating = 5;     // reset rating to 5 for next time
+            rating = UI.DS_MAX / 2;     // reset rating to 10 for next time
             plane.isVisible = false;
             this.notifyObservers(notification);
         });

@@ -1,5 +1,5 @@
 import { Engine, FreeCamera, Mesh, Scene } from "@babylonjs/core";
-import { WebXRControllerComponent, WebXRInputSource } from "@babylonjs/core/XR";
+import { WebXRControllerComponent, WebXRInputSource, WebXRSessionManager } from "@babylonjs/core/XR";
 import { Vector3 } from "@babylonjs/core/Maths/math";
 
 // custom classes
@@ -130,7 +130,10 @@ export class App {
             }
             
             // again, how to get rid of this?
-            if (input.discomfortScore >= 0) {
+            if (input.discomfortScore >= 15) {
+                this.changeGameState(State.POSTTEST);   // end if user is really cybersick
+            }
+            else if (input.discomfortScore >= 0) {
                 // check if there is a discomfort score and do something with it if there is
                 console.log(input.discomfortScore);
             }
@@ -231,10 +234,6 @@ export class App {
 
         // set current state to start state
         this._state = State.START;
-
-
-
-        this._scene.debugLayer.show();
     }
 
     private async _goToGame() : Promise<void> {
@@ -244,9 +243,11 @@ export class App {
         this._state = State.PAUSED;
         this._scene = this._mainScene;
 
+        let sessionManager: WebXRSessionManager;
+
         // this needs to stay in this function so user doesn't enter XR BEFORE hitting "Begin"
         // set up XR camera, collider, controllers
-        await this._playerController.loadXR().then(() => {
+        await this._playerController.loadXR().then(async() => {
             this._playerController.xrHelper.input.onControllerAddedObservable.add(inputSource => {
                 this._setUpXR(inputSource);
 
@@ -254,21 +255,25 @@ export class App {
                 this._engine.hideLoadingUI();
                 this._scene.attachControl();
             });
+
+            sessionManager = this._playerController.xrHelper.baseExperience.sessionManager;
+
+            // create (an initially invisible) pause menu & discomfort score prompt
+            this._mainUI = new UI("Player UI", true, this._mainScene, this._playerController.collider);
+            // subscribe to UI notifications for pausing/unpausing game during popups & getting handedness
+            this._mainUI.add(input => this._processUInotifications(input));
         });
 
-        // create (an initially invisible) pause menu & discomfort score prompt
-        this._mainUI = new UI("Player UI", true, this._mainScene, this._playerController.collider);
-        this._mainUI.createHandednessPrompt(this._scene);
-        // subscribe to UI notifications for pausing/unpausing game during popups & getting handedness
-        this._mainUI.add(input => this._processUInotifications(input));
+        sessionManager.onXRSessionInit.add(async() => {
+            // have user stand in place and stare at poster for 60 seconds while collecting motion tracking data
+            let poster: Mesh = this._mainUI.createPoster(this._playerController.collider, this._scene);
+            console.log("created");
+            await new Promise(resolve => setTimeout(resolve, 6000));    // DON'T FORGET TO ADD A ZERO LATER ON!
+            poster.dispose();
 
-        // have user stand in place and stare at poster for 60 seconds while collecting motion tracking data
-        // let poster: Mesh = this._mainUI.createPoster(this._scene);
-        // await new Promise(resolve => setTimeout(resolve, 60000));
-        // poster.dispose();
-
-        // // then get handedness
-        // this._mainUI.createHandednessPrompt(this._scene);
+            // then get handedness
+            this._mainUI.createHandednessPrompt(this._scene);
+        });
 
         this._scene.debugLayer.show();
     }
