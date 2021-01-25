@@ -9,6 +9,7 @@ import { UIInfo } from "./UIInfo";
 import { PlayerController } from "./PlayerController";
 import { InputManager } from "./InputManager";
 import { Trial } from "./Trial";
+import { DataCollectionManager } from "./DataCollectionManager";
 
 // side effects
 import "@babylonjs/core/Debug/debugLayer";
@@ -17,7 +18,11 @@ import "@babylonjs/inspector";
 enum State { START = 0, PAUSED = 1, MAIN = 2, POSTTEST = 3 }
 
 export class App {
-    private static readonly TOTAL_NUM_TRIALS = 1;
+    private static readonly TOTAL_NUM_TRIALS = 2;
+
+    // data collection stuff
+    private _dataCollector: DataCollectionManager;
+    private _collecting: boolean = false;
 
     // general app stuff
     private _scene: Scene;
@@ -32,7 +37,7 @@ export class App {
     private _environment: Environment;
     private _mainUI: UI = null;
     private _trial: Trial;
-    private _trialNumber: number = 0;
+    private _trialNumber: number = 0;  // -1: collect baseline data, 0: stop collecting, 1: first trial
 
     // player stuff
     private _inputManager: InputManager = null;
@@ -79,10 +84,6 @@ export class App {
         });
     }
 
-    private _update() : void {
-        this._inputManager?.updateControllerInput();
-    }
-
     // ugly solution for changing game state from UI class
     public changeGameState(state: State) : void {
         switch(state) {
@@ -107,6 +108,23 @@ export class App {
         }
     }
 
+    private _update() : void {
+        this._inputManager?.updateControllerInput();
+
+        if (this._collecting) {
+            this._dataCollector.logFrameInfo(Date.now(), this._trialNumber, this._playerController.speed);
+
+//            console.log("Global Position:" + this._playerController.xrCamera.globalPosition);
+//            console.log("Position: " + this._playerController.xrCamera.position);
+//            console.log("Absolute rotation: " + this._playerController.xrCamera.absoluteRotation);
+//            console.log("Timestamp: " + Date.now());
+//            console.log("WebXR timestamp: " + this._playerController.xrSessionManager.currentTimestamp);
+//            console.log("Frame: " + this._playerController.xrSessionManager.currentFrame);
+//            console.log("Viewer pose: " + this._playerController.xrSessionManager.currentFrame.getViewerPose(this._playerController.xrSessionManager.baseReferenceSpace).transform.position.x);
+//            console.log("Viewer pose: " + this._playerController.xrSessionManager.currentFrame.getViewerPose(this._playerController.xrSessionManager.baseReferenceSpace).transform.orientation.z);
+        }
+    }
+
     // executed when notified by input manager
     private _processControllerInput(component: WebXRControllerComponent) : void {
         // for locomotion
@@ -126,31 +144,25 @@ export class App {
             // ugghhhh is there some elegant way to get rid of this special case?
             if (input.rightHanded != null) {
                 // set primary controller
-                this._inputManager.setPrimaryController(input.rightHanded);                
-            }
-            
-            // again, how to get rid of this?
-            if (input.discomfortScore >= 15) {
-                this.changeGameState(State.POSTTEST);   // end if user is really cybersick
-            }
-            else if (input.discomfortScore >= 0) {
-                // check if there is a discomfort score and do something with it if there is
-                console.log(input.discomfortScore);
-            }
-
-            if (++this._trialNumber <= App.TOTAL_NUM_TRIALS) {
-                // begin new trial
-                this._trial = new Trial(this._playerController.xrCamera, this._playerController.collider, this._trialNumber, this._mainScene);
-                // trial will only notify app upon user collecting final coin:
-                this._trial.add(trialInput => {
-                    this.changeGameState(State.PAUSED);
-                    this._mainUI.DSpopup.isVisible = true;
-                    console.log(trialInput.coinsCollected);
-                }); 
+                this._inputManager.setPrimaryController(input.rightHanded);
+                this._startNewTrial(); 
             }
             else {
-                this.changeGameState(State.POSTTEST);
-            }                       
+                // check if there's a score to be logged
+                // if so, log it along with trial data
+                if (input.discomfortScore >= 0) {
+                    this._dataCollector.logTrialInfo(this._trialNumber, input.discomfortScore);
+                }
+
+                // end program if user is too sick or just completed final trial
+                if (input.discomfortScore == 10 || this._trialNumber == App.TOTAL_NUM_TRIALS) {
+                    this.changeGameState(State.POSTTEST);
+                }
+                // otherwise, begin new trial
+                else {
+                    this._startNewTrial();
+                }
+            }
         }
         
         else if (input.findMyWay) {
@@ -159,6 +171,25 @@ export class App {
         }
 
         this.changeGameState(input.gameState);
+    }
+
+    private _startNewTrial() : void {
+        // create new trial
+        this._trial = new Trial(this._playerController.xrCamera, this._playerController.collider, ++this._trialNumber, this._mainScene);
+
+        // start collecting data
+        this._collecting = true;
+
+        // make sure data collector has everything it needs
+        this._dataCollector.registerNewTrial(this._trial);
+        // this._dataCollector.registerPlayer(this._playerController.xrCamera, this._playerController.xrSessionManager);
+        
+        // trial will only notify app upon user collecting final coin:
+       this._trial.add(() => {
+            this.changeGameState(State.PAUSED);
+            this._mainUI.DSpopup.isVisible = true;
+            this._collecting = false;
+       }); 
     }
 
     private async _setUpMainScene() : Promise<void> {
@@ -205,7 +236,7 @@ export class App {
         }
 
         // create input manager
-        this._inputManager = new InputManager(this._scene, leftController, rightController);
+        this._inputManager = new InputManager(leftController, rightController);
         // subscribe to input manager notifications for movement and calling pause menu
         this._inputManager.add((component) => this._processControllerInput(component));
     }
@@ -262,23 +293,36 @@ export class App {
             this._mainUI = new UI("Player UI", true, this._mainScene, this._playerController.collider);
             // subscribe to UI notifications for pausing/unpausing game during popups & getting handedness
             this._mainUI.add(input => this._processUInotifications(input));
+
+            // set up data collection manager           
+            this._dataCollector = new DataCollectionManager(this._playerController.xrCamera, sessionManager);
         });
 
-        sessionManager.onXRSessionInit.add(async() => {
-            // have user stand in place and stare at poster for 60 seconds while collecting motion tracking data
-            let poster: Mesh = this._mainUI.createPoster(this._playerController.collider, this._scene);
-            console.log("created");
-            await new Promise(resolve => setTimeout(resolve, 6000));    // DON'T FORGET TO ADD A ZERO LATER ON!
-            poster.dispose();
 
-            // then get handedness
-            this._mainUI.createHandednessPrompt(this._scene);
+
+        sessionManager.onXRSessionInit.add(async() => {
+            await new Promise(resolve => setTimeout(resolve, 2000));    // wait for frame to load before executing the rest
+
+            if (sessionManager.currentFrame) {
+                // have user stand in place and stare at poster for 60 seconds while collecting motion tracking data
+                let poster: Mesh = this._mainUI.createPoster(this._playerController.collider, this._scene);
+                this._collecting = true;    // start collecting baseline data
+                await new Promise(resolve => setTimeout(resolve, 6000));    // DON'T FORGET TO ADD A ZERO LATER ON!
+                poster.dispose();
+                this._collecting = false;    // stop collecting baseline data
+
+                // then get handedness
+                this._mainUI.createHandednessPrompt(this._scene);
+            }
         });
 
         this._scene.debugLayer.show();
     }
 
     private async _goToEnd() : Promise<void> {
+        this._collecting = false;
+        this._dataCollector.quitDataCollection();
+
         await this._playerController.xrHelper.baseExperience.exitXRAsync();
 
         // display loading screen while loading

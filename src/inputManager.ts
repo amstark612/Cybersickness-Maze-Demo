@@ -1,4 +1,4 @@
-import { Observable, Scene } from "@babylonjs/core";
+import { Observable } from "@babylonjs/core";
 import { WebXRControllerComponent, WebXRInputSource } from "@babylonjs/core/XR";
 
 export class InputManager extends Observable<WebXRControllerComponent> {
@@ -6,7 +6,7 @@ export class InputManager extends Observable<WebXRControllerComponent> {
     private _rightController: WebXRInputSource | null;
     private _primaryController: WebXRInputSource;
 
-    constructor(scene: Scene, leftController: WebXRInputSource, rightController: WebXRInputSource) {
+    constructor(leftController: WebXRInputSource, rightController: WebXRInputSource) {
         super();
 
         this._leftController = leftController;
@@ -35,7 +35,7 @@ export class InputManager extends Observable<WebXRControllerComponent> {
     }
 
     private _onPrimaryThumbstick(component?: WebXRControllerComponent) : void {
-        if (component?.axes.y) {
+        if (component?.axes.y || component?.axes.y == 0) {  // so that player controller will update speed to 0 for data collection
             this.notifyObservers(component);
         }
     }

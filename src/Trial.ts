@@ -2,12 +2,9 @@ import { AbstractMesh, Mesh } from "@babylonjs/core/Meshes";
 import { WebXRCamera } from "@babylonjs/core/XR";
 import { Quaternion, Vector3 } from "@babylonjs/core/Maths/math.vector";
 import { ActionManager, ExecuteCodeAction } from "@babylonjs/core/Actions";
-import { Scene, SceneLoader } from "@babylonjs/core";
+import { Observable, Scene, SceneLoader } from "@babylonjs/core";
 
-// custom classes
-import { Observable } from "@babylonjs/core/Misc/observable";
-
-export class Trial extends Observable<{coinsCollected: number, duration: number}> {
+export class Trial extends Observable<{coinsCollected: number, startTime: number, endTime: number}> {
     private _lastPosition: Vector3;
     private _lastAngle: number;
     private _coinsCollected: number;
@@ -58,7 +55,7 @@ export class Trial extends Observable<{coinsCollected: number, duration: number}
 
                             // upon collecting last coin, let app know trial is over
                             if (index == coinMeshes.length - 1) {
-                                this.notifyObservers({ coinsCollected: this._coinsCollected, duration: this._startTime });
+                                this.notifyObservers({ coinsCollected: this._coinsCollected, startTime: this._startTime, endTime: Date.now() });
                             }
                         }
                     )
@@ -92,7 +89,7 @@ export class Trial extends Observable<{coinsCollected: number, duration: number}
             this._coinsCollected = 0;
         });
 
-        // start time
+        this._startTime = Date.now(); 
     }
 
     public get lastPosition() {

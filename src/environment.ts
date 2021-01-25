@@ -37,9 +37,10 @@ export class Environment {
 
         // load maze
         let mazeMeshes: AbstractMesh[];
-        SceneLoader.ImportMesh("", "assets/models/", "MazeNarrow.glb", this._scene, (meshes) => {
+        SceneLoader.ImportMesh("", "assets/models/", "QMazeEngine.glb", this._scene, (meshes) => {
             meshes[0].name = "Maze";
             meshes[0].setParent(parent);
+            // meshes[0].position.y = 0.3;
             meshes[0].scaling = new Vector3(1, 0.5, 1);
             meshes[0].rotation = new Vector3(0, Math.PI / 2, 0);
 

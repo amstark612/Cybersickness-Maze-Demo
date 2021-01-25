@@ -3,6 +3,7 @@ import { WebXRCamera, WebXRDefaultExperience, WebXRSessionManager } from "@babyl
 import { Quaternion, Vector3 } from "@babylonjs/core/Maths/math";
 
 export class PlayerController {
+    public xrSessionManager: WebXRSessionManager;
     public xrHelper: WebXRDefaultExperience;
     public xrCamera: WebXRCamera;
     public collider: Mesh;
@@ -11,7 +12,8 @@ export class PlayerController {
     private _scene: Scene;
 
     // locomotion stuff
-    private static readonly SPEEDCAP: number = 2.5;
+    private static readonly SPEEDCAP: number = 3.5;
+    public speed: number = 0;
 
     constructor(scene: Scene, canvas: HTMLCanvasElement) {
         this._scene = scene;
@@ -29,6 +31,8 @@ export class PlayerController {
     public async loadXR() : Promise<void> {
         // create XR experience && xr camera/player
         this.xrHelper = await this._scene.createDefaultXRExperienceAsync({ disableTeleportation: true });
+
+        this.xrSessionManager = this.xrHelper.baseExperience.sessionManager;
 
         this.xrCamera = this.xrHelper.input.xrCamera;
         this.xrCamera.name = "XR Camera";
@@ -54,33 +58,36 @@ export class PlayerController {
 
     public updateMovement(value: number, engine: Engine) : void {
         if (this.enableLocomotion) {
-            let sessionManager: WebXRSessionManager = this.xrHelper.baseExperience.sessionManager;
-
             // negative b/c thumbstick values inverted for no good reason...?
-            let speed: number = -(engine.getDeltaTime() / 1000 * PlayerController.SPEEDCAP * value);
+            this.speed = -(engine.getDeltaTime() / 1000 * PlayerController.SPEEDCAP * value);
 
-            // get player/camera's forward vector
-            let forward: Vector3 = this.xrCamera.getDirection(Vector3.Forward());
+            if (this.speed) {
+                // get player/camera's forward vector
+                let forward: Vector3 = this.xrCamera.getDirection(Vector3.Forward());
         
-            // multiply player's forward vector by direction and speed
-            forward.scaleInPlace(speed);
+                // multiply player's forward vector by direction and speed
+                forward.scaleInPlace(this.speed);
 
-            // why does the x value need to be negative? i don't know, but it works...
-            let direction: XRRigidTransform = new XRRigidTransform({
-                x: -forward.x,  // why? idk? it works? will find out when I have the luxury of time?
-                y: 0,           // so user can't go flying up in the air
-                z: forward.z
-            });
+                // why does the x value need to be negative? i don't know, but it works...
+                let direction: XRRigidTransform = new XRRigidTransform({
+                    x: -forward.x,  // why? idk? it works? will find out when I have the luxury of time?
+                    y: 0,           // so user can't go flying up in the air
+                    z: forward.z
+                });
 
-            let newPosition: XRReferenceSpace = sessionManager.referenceSpace.getOffsetReferenceSpace(direction);
+                let newPosition: XRReferenceSpace = this.xrSessionManager.referenceSpace.getOffsetReferenceSpace(direction);
 
-            sessionManager.referenceSpace = newPosition;
+                this.xrSessionManager.referenceSpace = newPosition;
 
-            //// this works too but ^^ is more consistent with Babylon documentation
-            //this.xrCamera.position.addInPlace(directionVector.scale(forward));
+                //// this works too but ^^ is more consistent with Babylon documentation
+                //this.xrCamera.position.addInPlace(directionVector.scale(forward));
 
-            // babylon is stupid and will move the collider away from camera unless you do this.
-            this.collider.setPositionWithLocalVector(Vector3.Zero());
+                // babylon is stupid and will move the collider away from camera unless you do this.
+                this.collider.setPositionWithLocalVector(Vector3.Zero());
+            }
+        }
+        else {
+            this.speed = 0;
         }
     }
 
