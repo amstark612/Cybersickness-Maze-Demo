@@ -13,7 +13,7 @@ export class PlayerController {
 
     // locomotion stuff
     private static readonly SPEEDCAP: number = 3.5;
-    public speed: number = 0;
+    public velocity: number = 0;   // for data collection
 
     constructor(scene: Scene, canvas: HTMLCanvasElement) {
         this._scene = scene;
@@ -59,14 +59,16 @@ export class PlayerController {
     public updateMovement(value: number, engine: Engine) : void {
         if (this.enableLocomotion) {
             // negative b/c thumbstick values inverted for no good reason...?
-            this.speed = -(engine.getDeltaTime() / 1000 * PlayerController.SPEEDCAP * value);
+            this.velocity = -(PlayerController.SPEEDCAP * value);
 
-            if (this.speed) {
+            let speed = engine.getDeltaTime() / 1000 * this.velocity;
+
+            if (speed) {
                 // get player/camera's forward vector
                 let forward: Vector3 = this.xrCamera.getDirection(Vector3.Forward());
         
                 // multiply player's forward vector by direction and speed
-                forward.scaleInPlace(this.speed);
+                forward.scaleInPlace(speed);
 
                 // why does the x value need to be negative? i don't know, but it works...
                 let direction: XRRigidTransform = new XRRigidTransform({
@@ -87,7 +89,7 @@ export class PlayerController {
             }
         }
         else {
-            this.speed = 0;
+            this.velocity = 0;
         }
     }
 

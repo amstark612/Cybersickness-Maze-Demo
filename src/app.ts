@@ -112,7 +112,7 @@ export class App {
         this._inputManager?.updateControllerInput();
 
         if (this._collecting) {
-            this._dataCollector.logFrameInfo(Date.now(), this._trialNumber, this._playerController.speed);
+            this._dataCollector.logFrameInfo(Date.now(), this._trialNumber, this._playerController.velocity);
 
 //            console.log("Global Position:" + this._playerController.xrCamera.globalPosition);
 //            console.log("Position: " + this._playerController.xrCamera.position);
