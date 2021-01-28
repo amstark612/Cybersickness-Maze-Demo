@@ -1,4 +1,4 @@
-import { Engine, FreeCamera, Mesh, MeshBuilder, Scene } from "@babylonjs/core";
+import { FreeCamera, Mesh, MeshBuilder, Scene } from "@babylonjs/core";
 import { WebXRCamera, WebXRDefaultExperience, WebXRSessionManager } from "@babylonjs/core/XR";
 import { Quaternion, Vector3 } from "@babylonjs/core/Maths/math";
 
@@ -56,12 +56,12 @@ export class PlayerController {
         return collider;
     }
 
-    public updateMovement(value: number, engine: Engine) : void {
+    public updateMovement(value: number, deltaTime: number) : void {
         if (this.enableLocomotion) {
             // negative b/c thumbstick values inverted for no good reason...?
             this.velocity = -(PlayerController.SPEEDCAP * value);
 
-            let speed = engine.getDeltaTime() / 1000 * this.velocity;
+            let speed = deltaTime / 1000 * this.velocity;
 
             if (speed) {
                 // get player/camera's forward vector

@@ -4,11 +4,12 @@ import { Quaternion, Vector3 } from "@babylonjs/core/Maths/math.vector";
 import { ActionManager, ExecuteCodeAction } from "@babylonjs/core/Actions";
 import { Observable, Scene, SceneLoader } from "@babylonjs/core";
 
-export class Trial extends Observable<{coinsCollected: number, startTime: number, endTime: number}> {
+export class Trial extends Observable<{ timestamp: number }> {
     private _lastPosition: Vector3;
     private _lastAngle: number;
-    private _coinsCollected: number;
+    private _totalCoinsInMaze: number;
     private _startTime: number;
+    private _endTime: number;
 
     constructor(player: WebXRCamera, collider: Mesh, trialNumber: number, scene: Scene) {
         super();
@@ -25,6 +26,7 @@ export class Trial extends Observable<{coinsCollected: number, startTime: number
 
             // get actual coins
             coinMeshes = meshes[0].getChildMeshes();
+            this._totalCoinsInMaze = coinMeshes.length - 1; // b/c first coin is not collectable
 
             // do not include first coin - first coin is just placemarker for starting position
             for (let index: number = 1; index < coinMeshes.length; index++) {
@@ -47,15 +49,15 @@ export class Trial extends Observable<{coinsCollected: number, startTime: number
                             this._lastPosition = coinMeshes[index].absolutePosition;
                             this._lastAngle = coinMeshes[index].absoluteRotationQuaternion.toEulerAngles().y + Math.PI;
 
-                            this._coinsCollected++;
-
                             if (coinMeshes[index].getClassName() == "InstancedMesh") {
+                                this.notifyObservers({ timestamp: Date.now() }, 1); // tell data collection manager to log coin pickup
                                 coinMeshes[index].dispose();  // don't dispose of source coin or they'll all disappear
                             }
 
                             // upon collecting last coin, let app know trial is over
                             if (index == coinMeshes.length - 1) {
-                                this.notifyObservers({ coinsCollected: this._coinsCollected, startTime: this._startTime, endTime: Date.now() });
+                                this._endTime = Date.now(); // store end time for data collection manager to access after user submits discomfort score
+                                this.notifyObservers({ timestamp: this._endTime }, 2);  // tell App to ask for discomfort score
                             }
                         }
                     )
@@ -85,8 +87,6 @@ export class Trial extends Observable<{coinsCollected: number, startTime: number
 
             // rotate user to correct rotation (why -90 degress? honestly, idk. it just works)
             player.rotationQuaternion.multiplyInPlace(Quaternion.FromEulerAngles(0, angle - Math.PI / 2, 0));
-
-            this._coinsCollected = 0;
         });
 
         this._startTime = Date.now(); 
@@ -98,5 +98,17 @@ export class Trial extends Observable<{coinsCollected: number, startTime: number
 
     public get lastAngle() {
         return this._lastAngle;
+    }
+
+    public get startTime() {
+        return this._startTime;
+    }
+
+    public get endTime() {
+        return this._endTime;
+    }
+
+    public get totalCoinsInMaze() {
+        return this._totalCoinsInMaze;
     }
 }

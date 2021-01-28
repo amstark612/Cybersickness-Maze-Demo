@@ -35,7 +35,8 @@ export class InputManager extends Observable<WebXRControllerComponent> {
     }
 
     private _onPrimaryThumbstick(component?: WebXRControllerComponent) : void {
-        if (component?.axes.y || component?.axes.y == 0) {  // so that player controller will update speed to 0 for data collection
+        if (component!) {  // so that player controller will update speed to 0 for data collection
+//        if (component?.axes.y || component?.axes.y == 0) {  // so that player controller will update speed to 0 for data collection
             this.notifyObservers(component);
         }
     }

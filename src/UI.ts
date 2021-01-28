@@ -173,7 +173,7 @@ export class UI extends Observable<UIInfo> {
     public createPoster(parent: Mesh, scene: Scene) : Mesh {
         // create poster
         const plane: Mesh = MeshBuilder.CreatePlane("Poster", { width: 1, height: 1.2 }, scene);
-        plane.position.set(parent.position.x, parent.position.y + .5, parent.position.z + 3);
+        plane.position.set(parent.position.x, parent.position.y + .1, parent.position.z + 1.5);
 
         // do this so it shows up right in 3D. dunno why.
         const planeADT: AdvancedDynamicTexture = AdvancedDynamicTexture.CreateForMesh(plane);

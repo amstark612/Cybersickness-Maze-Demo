@@ -112,16 +112,7 @@ export class App {
         this._inputManager?.updateControllerInput();
 
         if (this._collecting) {
-            this._dataCollector.logFrameInfo(Date.now(), this._trialNumber, this._playerController.velocity);
-
-//            console.log("Global Position:" + this._playerController.xrCamera.globalPosition);
-//            console.log("Position: " + this._playerController.xrCamera.position);
-//            console.log("Absolute rotation: " + this._playerController.xrCamera.absoluteRotation);
-//            console.log("Timestamp: " + Date.now());
-//            console.log("WebXR timestamp: " + this._playerController.xrSessionManager.currentTimestamp);
-//            console.log("Frame: " + this._playerController.xrSessionManager.currentFrame);
-//            console.log("Viewer pose: " + this._playerController.xrSessionManager.currentFrame.getViewerPose(this._playerController.xrSessionManager.baseReferenceSpace).transform.position.x);
-//            console.log("Viewer pose: " + this._playerController.xrSessionManager.currentFrame.getViewerPose(this._playerController.xrSessionManager.baseReferenceSpace).transform.orientation.z);
+            this._dataCollector.logFrameInfo(Date.now(), this._trialNumber, this._playerController.velocity, this._state);
         }
     }
 
@@ -129,7 +120,7 @@ export class App {
     private _processControllerInput(component: WebXRControllerComponent) : void {
         // for locomotion
         if (component.id == "xr-standard-thumbstick") {
-            this._playerController.updateMovement(component.axes.y, this._engine);
+            this._playerController.updateMovement(component.axes.y, this._engine.getDeltaTime());
         }
         // for calling pause menu
         else if (component.id == "a-button" || component.id == "x-button") {
@@ -156,6 +147,10 @@ export class App {
 
                 // end program if user is too sick or just completed final trial
                 if (input.discomfortScore == 10 || this._trialNumber == App.TOTAL_NUM_TRIALS) {
+                    // end data collection
+                    this._collecting = false;
+                    this._dataCollector.quitDataCollection();
+
                     this.changeGameState(State.POSTTEST);
                 }
                 // otherwise, begin new trial
@@ -186,10 +181,11 @@ export class App {
         
         // trial will only notify app upon user collecting final coin:
        this._trial.add(() => {
-            this.changeGameState(State.PAUSED);
-            this._mainUI.DSpopup.isVisible = true;
-            this._collecting = false;
-       }); 
+                this.changeGameState(State.PAUSED);
+                this._mainUI.DSpopup.isVisible = true;
+            },
+            2
+        ); 
     }
 
     private async _setUpMainScene() : Promise<void> {
@@ -320,9 +316,6 @@ export class App {
     }
 
     private async _goToEnd() : Promise<void> {
-        this._collecting = false;
-        this._dataCollector.quitDataCollection();
-
         await this._playerController.xrHelper.baseExperience.exitXRAsync();
 
         // display loading screen while loading
