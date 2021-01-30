@@ -2,12 +2,10 @@ import { Mesh, MeshBuilder, Observable, Scene } from "@babylonjs/core";
 import { AdvancedDynamicTexture } from "@babylonjs/gui/2D";
 import { Button, Control, Grid, Image, RadioButton, Rectangle, Slider, StackPanel, TextBlock } from "@babylonjs/gui/2D/controls";
 
-// custom classes
-import { UIInfo } from "./UIInfo";
-
 enum State { START = 0, PAUSED = 1, MAIN = 2, POSTTEST = 3 }
+enum UIMask { CHANGE_GAMESTATE = 1, LOG_DATA = 2, SET_HANDEDNESS = 3, FIND_MY_WAY = 4 }
 
-export class UI extends Observable<UIInfo> {
+export class UI extends Observable<{ mask: number, data?: any }> {
     // menus
     private _2Dmenu: AdvancedDynamicTexture;
     public pauseMenu: Mesh;
@@ -79,7 +77,7 @@ export class UI extends Observable<UIInfo> {
         const btn: Button = this._createBtn("BEGIN", false);
 
         btn.onPointerDownObservable.add(() => {
-            this.notifyObservers(new UIInfo(State.PAUSED, false));
+            this.notifyObservers({ mask: UIMask.CHANGE_GAMESTATE, data: State.PAUSED });
             scene.detachControl();
         })
 
@@ -148,16 +146,14 @@ export class UI extends Observable<UIInfo> {
         // make buttons do stuff
         resumeBtn.onPointerDownObservable.add(() => {
             this.pauseMenu.isVisible = false;
-            this.notifyObservers(new UIInfo(State.MAIN, false));
+            this.notifyObservers({ mask: UIMask.CHANGE_GAMESTATE, data: State.MAIN });
         });
         findMyWayBtn.onPointerDownObservable.add(() => {
-            let notification: UIInfo = new UIInfo(State.MAIN, false);
-            notification.findMyWay = true;
+            this.notifyObservers({ mask: UIMask.FIND_MY_WAY });
             this.pauseMenu.isVisible = false;
-            this.notifyObservers(notification);
         })
         exitBtn.onPointerDownObservable.add(() => {
-            this.notifyObservers(new UIInfo(State.POSTTEST, false));
+            this.notifyObservers({ mask: UIMask.CHANGE_GAMESTATE, data: State.POSTTEST });
             plane.dispose();
         });
 
@@ -253,11 +249,9 @@ export class UI extends Observable<UIInfo> {
         });
 
         submitBtn.onPointerDownObservable.add(() => {
-            let notification: UIInfo = new UIInfo(State.MAIN, true);
-            notification.discomfortScore = rating;
+            this.notifyObservers({ mask: UIMask.LOG_DATA, data: rating });
             rating = UI.DS_MAX / 2;     // reset rating to 10 for next time
             plane.isVisible = false;
-            this.notifyObservers(notification);
         });
 
         // add controls to grid from top to bottom, left to right
@@ -318,9 +312,7 @@ export class UI extends Observable<UIInfo> {
         });
 
         submitBtn.onPointerDownObservable.add(() => {
-            let notification: UIInfo = new UIInfo(State.MAIN, true);
-            notification.rightHanded = rightHanded;
-            this.notifyObservers(notification);
+            this.notifyObservers({ mask: UIMask.SET_HANDEDNESS, data: rightHanded });
             plane.dispose();
         });
 

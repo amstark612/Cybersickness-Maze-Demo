@@ -5,7 +5,6 @@ import { Vector3 } from "@babylonjs/core/Maths/math";
 // custom classes
 import { Environment } from "./Environment";
 import { UI } from "./UI";
-import { UIInfo } from "./UIInfo";
 import { PlayerController } from "./PlayerController";
 import { InputManager } from "./InputManager";
 import { Trial } from "./Trial";
@@ -16,6 +15,7 @@ import "@babylonjs/core/Debug/debugLayer";
 import "@babylonjs/inspector";
 
 enum State { START = 0, PAUSED = 1, MAIN = 2, POSTTEST = 3 }
+enum UIMask { CHANGE_GAMESTATE = 1, LOG_DATA = 2, SET_HANDEDNESS = 3, FIND_MY_WAY = 4 }
 
 export class App {
     private static readonly TOTAL_NUM_TRIALS = 2;
@@ -85,7 +85,7 @@ export class App {
     }
 
     // ugly solution for changing game state from UI class
-    public changeGameState(state: State) : void {
+    public changeGameState(state: State | number) : void {
         switch(state) {
             case State.PAUSED:
                 // how to get rid of this ugly special case?
@@ -129,48 +129,49 @@ export class App {
         }
     }
 
-    // executed when notified by UI
-    private _processUInotifications(input: UIInfo) : void {
-        if (input.newTrial) {
-            // ugghhhh is there some elegant way to get rid of this special case?
-            if (input.rightHanded != null) {
-                // set primary controller
-                this._inputManager.setPrimaryController(input.rightHanded);
-                this._startNewTrial(); 
-            }
-            else {
-                // check if there's a score to be logged
-                // if so, log it along with trial data
-                if (input.discomfortScore >= 0) {
-                    this._dataCollector.logTrialInfo(this._trialNumber, input.discomfortScore);
-                }
+    // so messy...is there another way to send different types from observable to observer depending on a mask?
+    private _processUInotifications(mask: number, data?: any) {
+        switch (mask) {
+            // called for pause menu and exiting early
+            case UIMask.CHANGE_GAMESTATE:
+                this.changeGameState(data);
+                break;
+            case UIMask.LOG_DATA:
+                // log discomfort score
+                this._dataCollector.logTrialInfo(this._trialNumber, data);
 
                 // end program if user is too sick or just completed final trial
-                if (input.discomfortScore == 10 || this._trialNumber == App.TOTAL_NUM_TRIALS) {
+                if (data == 10 || this._trialNumber == App.TOTAL_NUM_TRIALS) {
                     // end data collection
                     this._collecting = false;
                     this._dataCollector.quitDataCollection();
-
+                
                     this.changeGameState(State.POSTTEST);
                 }
                 // otherwise, begin new trial
                 else {
                     this._startNewTrial();
                 }
-            }
+                break;
+            case UIMask.SET_HANDEDNESS:
+                this._inputManager.setPrimaryController(data);
+                this._startNewTrial();
+                break;
+            case UIMask.FIND_MY_WAY:
+                this._playerController.setOrientation(this._trial.lastAngle);
+                this._playerController.setPosition(this._trial.lastPosition);
+                this.changeGameState(State.MAIN);
+                break;
+            default:
+                break;
         }
-        
-        else if (input.findMyWay) {
-            this._playerController.setOrientation(this._trial.lastAngle);
-            this._playerController.setPosition(this._trial.lastPosition);
-        }
-
-        this.changeGameState(input.gameState);
     }
 
     private _startNewTrial() : void {
         // create new trial
         this._trial = new Trial(this._playerController.xrCamera, this._playerController.collider, ++this._trialNumber, this._mainScene);
+
+        this.changeGameState(State.MAIN);
 
         // start collecting data
         this._collecting = true;
@@ -248,8 +249,8 @@ export class App {
         
         // create fullscreen UI for GUI elements
         const guiMenu: UI = new UI("UI", false);
-        // subscribe to UI notifications so start button works
-        guiMenu.add(input => this._processUInotifications(input));
+        // subscribe to UI notifications 
+        guiMenu.add(input => this.changeGameState(input.data));
 
         await this._setUpMainScene().then(() => {
                 guiMenu.createStartScreen(this._scene);
@@ -288,7 +289,7 @@ export class App {
             // create (an initially invisible) pause menu & discomfort score prompt
             this._mainUI = new UI("Player UI", true, this._mainScene, this._playerController.collider);
             // subscribe to UI notifications for pausing/unpausing game during popups & getting handedness
-            this._mainUI.add(input => this._processUInotifications(input));
+            this._mainUI.add(input => this._processUInotifications(input.mask, input.data!));
 
             // set up data collection manager           
             this._dataCollector = new DataCollectionManager(this._playerController.xrCamera, sessionManager);
