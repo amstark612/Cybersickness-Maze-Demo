@@ -295,9 +295,8 @@ export class App {
             this._dataCollector = new DataCollectionManager(this._playerController.xrCamera, sessionManager);
         });
 
-
-
         sessionManager.onXRSessionInit.add(async() => {
+            /* handedness bypass for dev purposes - delete coin models from environment.ts later
             await new Promise(resolve => setTimeout(resolve, 2000));    // wait for frame to load before executing the rest
 
             if (sessionManager.currentFrame) {
@@ -311,7 +310,10 @@ export class App {
                 // then get handedness
                 this._mainUI.createHandednessPrompt(this._scene);
             }
+            */
         });
+
+        this._environment.testing(this._scene);
 
         this._scene.debugLayer.show();
     }

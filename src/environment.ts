@@ -22,18 +22,19 @@ export class Environment {
         let parent: TransformNode = new TransformNode("Environment");
 
         // load textures
-        let wallTexture: Texture = new Texture("assets/textures/brick.png", this._scene);
-        wallTexture.uScale = 5;
-        wallTexture.vScale = 2;
+        let wallTexture: Texture = new Texture("assets/textures/lightestbrick.png", this._scene);
+        wallTexture.uScale = 5;   // originally 5
+        wallTexture.vScale = 3;   // originally 2
         let wallMaterial: StandardMaterial = new StandardMaterial("brick", this._scene);
+        wallMaterial.specularColor = new Color3(0.2, 0.2, 0.2);
         wallMaterial.diffuseTexture = wallTexture;
 
-        let groundTexture: Texture = new Texture("assets/textures/stone.png", this._scene);
-        groundTexture.uScale = 80;
-        groundTexture.vScale = 80;
-        let groundMaterial: StandardMaterial = new StandardMaterial("stone", this._scene);
-        groundMaterial.diffuseTexture = groundTexture;
-
+        let groundTexture: Texture = new Texture("assets/textures/ground.png", this._scene);
+        groundTexture.uScale = 300;
+        groundTexture.vScale = 300;
+        let groundMaterial: StandardMaterial = new StandardMaterial("ground", this._scene);
+        groundMaterial.disableLighting = true;  // these two lines stop sunlight from reflecting all shiny
+        groundMaterial.emissiveTexture = groundTexture;
 
         // load maze
         let mazeMeshes: AbstractMesh[];
@@ -90,14 +91,50 @@ export class Environment {
 
     private _createLights(parent: TransformNode) : void {
         // ambient light to illuminate objects
-        let ambientLight: HemisphericLight = new HemisphericLight("ambient", Vector3.Up(), this._scene);
+        let ambientLight: HemisphericLight = new HemisphericLight("ambient", new Vector3(15, 75, 25), this._scene);
         ambientLight.parent = parent;
-        ambientLight.intensity = 1.0;
+        ambientLight.intensity = 2.5;
         ambientLight.diffuse = new Color3(0.7, 0.7, 0.7);
 
         // directional light for more definition in shadows
-        let directionalLight: DirectionalLight = new DirectionalLight("sunlight", Vector3.Down(), this._scene);
+        let directionalLight: DirectionalLight = new DirectionalLight("sunlight", new Vector3(-5, -20, 90), this._scene);
         directionalLight.parent = parent;
         directionalLight.intensity = 0.6;
     }
+
+    public testing(scene: Scene) : void {
+        // load texture
+        let coinTexture: Texture = new Texture("assets/textures/gold.png", scene );
+        let coinMaterial: StandardMaterial = new StandardMaterial("coin", scene);
+        coinMaterial.diffuseTexture = coinTexture;
+        
+
+        let coinMeshes: AbstractMesh[];
+        SceneLoader.ImportMesh("", "assets/models/", "Trial1.glb", scene, (meshes) => {
+            meshes[0].name = "Coins";
+            meshes[0].scaling = new Vector3(1, 0.5, 1);
+            meshes[0].rotation = new Vector3(0, Math.PI / 2, 0);
+            
+            // lower coins so short people don't get whacked in the face collecting them
+            meshes[0].position.y = -0.5;
+
+            // get actual coins
+            coinMeshes = meshes[0].getChildMeshes();
+
+            // apply coin texture to first coin (other coins will be instanced meshes of this one)
+            coinMeshes[0].material = coinMaterial;
+
+            // do not include first coin - first coin is just placemarker for starting position
+            for (let index: number = 1; index < coinMeshes.length; index++) {
+                // scale coins here b/c too lazy to change them in Unity
+                coinMeshes[index].scaling = new Vector3(0.3, 0.02, 0.3);
+
+                // enable collisions so user can collect coins
+                coinMeshes[index].checkCollisions = true;
+            
+            }
+        });
+    
+   }
+
 }

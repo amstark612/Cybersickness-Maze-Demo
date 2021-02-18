@@ -1,8 +1,12 @@
 import { AbstractMesh, Mesh } from "@babylonjs/core/Meshes";
+import { StandardMaterial, Texture } from "@babylonjs/core/Materials";
 import { WebXRCamera } from "@babylonjs/core/XR";
-import { Quaternion, Vector3 } from "@babylonjs/core/Maths/math.vector";
+import { Color3, Quaternion, Vector3 } from "@babylonjs/core/Maths";
 import { ActionManager, ExecuteCodeAction } from "@babylonjs/core/Actions";
 import { Observable, Scene, SceneLoader } from "@babylonjs/core";
+
+// side effects
+import "@babylonjs/loaders/glTF/2.0/glTFLoader";
 
 export class Trial extends Observable<{ timestamp: number }> {
     private _lastPosition: Vector3;
@@ -13,6 +17,11 @@ export class Trial extends Observable<{ timestamp: number }> {
 
     constructor(player: WebXRCamera, collider: Mesh, trialNumber: number, scene: Scene) {
         super();
+        
+        // load texture
+        let coinTexture: Texture = new Texture("assets/textures/gold.png", scene );
+        let coinMaterial: StandardMaterial = new StandardMaterial("coin", scene);
+        coinMaterial.diffuseTexture = coinTexture;
 
         // import the mesh of coins
         let coinMeshes: AbstractMesh[];
@@ -27,6 +36,9 @@ export class Trial extends Observable<{ timestamp: number }> {
             // get actual coins
             coinMeshes = meshes[0].getChildMeshes();
             this._totalCoinsInMaze = coinMeshes.length - 1; // b/c first coin is not collectable
+
+            // apply coin texture to first coin (other coins will be instanced meshes of this one)
+            coinMeshes[0].material = coinMaterial;
 
             // do not include first coin - first coin is just placemarker for starting position
             for (let index: number = 1; index < coinMeshes.length; index++) {

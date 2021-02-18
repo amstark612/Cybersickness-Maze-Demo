@@ -5,7 +5,7 @@ import * as RED from "./redapi_participant";
 import { Trial } from "./Trial";
 
 export class DataCollectionManager {
-    private static readonly SERVER: string = "https://red.cse.umn.edu";
+    private static readonly SERVER: string = "http://red.cse.umn.edu";
     // private static readonly EXP_ID: string = "Incidence of Cybersickness";
     private static readonly EXP_ID: string = "Christina-Testing";
     private _participantID: string;
@@ -25,6 +25,7 @@ export class DataCollectionManager {
     public registerNewTrial(trial: Trial) : void {
         this._trial = trial;
         this._trial.add( data => { this._logCoinPickup(data.timestamp) }, 1);
+        console.log(this._participantID);
     }
 
     public logFrameInfo(timestamp: number, trialNumber: number, speed: number, state: number) : void {
