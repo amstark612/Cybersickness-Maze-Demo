@@ -6,3 +6,6 @@ npm-debug.log
 dist
 Graveyard
 deploy.sh
+*~
+*.swp
+*.swo

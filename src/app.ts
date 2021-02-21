@@ -112,7 +112,7 @@ export class App {
         this._inputManager?.updateControllerInput();
 
         if (this._collecting) {
-            this._dataCollector.logFrameInfo(Date.now(), this._trialNumber, this._playerController.velocity, this._state);
+            // this._dataCollector.logFrameInfo(Date.now(), this._trialNumber, this._playerController.velocity, this._state);
         }
     }
 
@@ -296,7 +296,7 @@ export class App {
         });
 
         sessionManager.onXRSessionInit.add(async() => {
-            /* handedness bypass for dev purposes - delete coin models from environment.ts later
+            /* handedness bypass for dev purposes - delete coin models from environment.ts later */
             await new Promise(resolve => setTimeout(resolve, 2000));    // wait for frame to load before executing the rest
 
             if (sessionManager.currentFrame) {
@@ -310,10 +310,10 @@ export class App {
                 // then get handedness
                 this._mainUI.createHandednessPrompt(this._scene);
             }
-            */
+            // */
         });
 
-        this._environment.testing(this._scene);
+        // this._environment.testing(this._scene);
 
         this._scene.debugLayer.show();
     }
