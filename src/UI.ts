@@ -270,7 +270,7 @@ export class UI extends Observable<{ mask: number, data?: any }> {
         let rightHanded: boolean = true;
 
         const plane: Mesh = MeshBuilder.CreatePlane("Handedness prompt", { width: 1.5, height: 1 }, scene);
-        plane.position.set(0, 1.6, 2);
+        plane.position.set(0.2, 1.6, 0);
 
         // do this so it shows up right in 3D. don't ask me why because I don't know. DON'T AT ME.
         const planeADT: AdvancedDynamicTexture = AdvancedDynamicTexture.CreateForMesh(plane);

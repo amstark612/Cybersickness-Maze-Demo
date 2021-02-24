@@ -30,6 +30,10 @@ export class Trial extends Observable<{ timestamp: number }> {
         SceneLoader.ImportMesh("", "assets/models/", "Trial" + trialNumber.toString() + ".glb", scene, (meshes) => {
             meshes[0].name = "Coins";
 
+            // meshes[0].rotation.y += Math.PI / 2;
+            // raise coins off ground 
+            meshes[0].position.y += 0.2;
+
             // get actual coins
             coinMeshes = meshes[0].getChildMeshes();
             this._totalCoinsInMaze = coinMeshes.length - 1; // b/c first coin is not collectable
@@ -40,7 +44,7 @@ export class Trial extends Observable<{ timestamp: number }> {
             // do not include first coin - first coin is just placemarker for starting position
             for (let index: number = 1; index < coinMeshes.length; index++) {
                 // scale coins here b/c too lazy to change them in Unity
-                coinMeshes[index].scaling = new Vector3(0.7, 0.3, 0.7);
+                // coinMeshes[index].scaling = new Vector3(0.7, 0.3, 0.7);
 
                 // enable collisions so user can collect coins
                 coinMeshes[index].checkCollisions = true;
@@ -53,11 +57,12 @@ export class Trial extends Observable<{ timestamp: number }> {
                             parameter: { mesh: collider }
                         },
                         () => {
-                            // store these in case user gets lost so we can plop them back in the right place
-                            this._lastPosition = coinMeshes[index].absolutePosition;
-                            this._lastAngle = coinMeshes[index].absoluteRotationQuaternion.toEulerAngles().y + Math.PI;
-
                             if (coinMeshes[index].getClassName() == "InstancedMesh") {
+                                // store these in case user gets lost so we can plop them back in the right place
+                                this._lastPosition = coinMeshes[index].absolutePosition;
+                                console.log("from coin: " + this._lastPosition);
+                                this._lastAngle = coinMeshes[index].absoluteRotationQuaternion.toEulerAngles().y + Math.PI / 2;
+
                                 this.notifyObservers({ timestamp: Date.now() }, 1); // tell data collection manager to log coin pickup
                                 coinMeshes[index].dispose();  // don't dispose of source coin or they'll all disappear
                             }
@@ -72,25 +77,20 @@ export class Trial extends Observable<{ timestamp: number }> {
             }
 
             // hide first coin b/c that's where user starts
-            // coinMeshes[0].isVisible = false;
+            coinMeshes[0].isVisible = false;
             // set coin height b/c babylon is weird and user will be stuck at coin's height...? 
             // even though we will be setting player position to this._lastPosition instead of actual coin's position?
             // this is really really really dumb??????
             // find better sol later?
-            // coinMeshes[0].position.y = 1.6;
+            coinMeshes[0].position.y = 0.45;
 
             // get first coin's position & rotation
             this._lastPosition = coinMeshes[0].getAbsolutePosition();
             this._lastAngle = coinMeshes[0].absoluteRotationQuaternion.toEulerAngles().y;
 
-            console.log("Coin info: " + this._lastPosition + " " + this._lastAngle);
-            console.log("Camera position before setting: " + player.position + ", global position: " + player.globalPosition);
-
             // put player in starting position & rotation
             // this.lastPosition.y = 1.6;
             player.position = this._lastPosition;
-
-            console.log("Camera position after setting: " + player.position + ", global position: " + player.globalPosition);
 
             // get user's y-rotation
             let camAngle: number = player.absoluteRotation.toEulerAngles().y;

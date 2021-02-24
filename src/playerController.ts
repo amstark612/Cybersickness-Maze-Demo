@@ -19,7 +19,7 @@ export class PlayerController {
         this._scene = scene;
 
         // this creates and positions a first-person non-VR camera (non-mesh)
-        const camera: FreeCamera = new FreeCamera("Default Camera", new Vector3(0, 1.6, 0.75), scene);
+        const camera: FreeCamera = new FreeCamera("Default Camera", new Vector3(0.2, 1.6, -1.5), scene);
         
         // set non-VR camera view to VR camera's view
         camera.fov = 90 * Math.PI / 180;

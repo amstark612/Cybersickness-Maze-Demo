@@ -158,6 +158,7 @@ export class App {
                 this._startNewTrial();
                 break;
             case UIMask.FIND_MY_WAY:
+                // console.log("from app globalposition: " + this._trial.lastPosition + ", angle: " + this._trial.lastAngle);
                 this._playerController.setOrientation(this._trial.lastAngle);
                 this._playerController.setPosition(this._trial.lastPosition);
                 this.changeGameState(State.MAIN);
@@ -303,7 +304,7 @@ export class App {
                 // have user stand in place and stare at poster for 60 seconds while collecting motion tracking data
                 let poster: Mesh = this._mainUI.createPoster(this._playerController.collider, this._scene);
                 this._collecting = true;    // start collecting baseline data
-                await new Promise(resolve => setTimeout(resolve, 6000));    // DON'T FORGET TO ADD A ZERO LATER ON!
+                await new Promise(resolve => setTimeout(resolve, 2000));
                 poster.dispose();
                 this._collecting = false;    // stop collecting baseline data
 

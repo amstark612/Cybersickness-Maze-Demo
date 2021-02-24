@@ -24,10 +24,10 @@ export class Environment {
 
         // load textures
         let wallTexture: Texture = new Texture("assets/textures/tile.png", this._scene);
-        wallTexture.uScale = 10;
+        wallTexture.uScale = 11;
         wallTexture.vScale = 10;
         let wallMaterial: StandardMaterial = new StandardMaterial("brick", this._scene);
-        wallMaterial.specularTexture = new Texture("assets/texture/tilen.png", this._scene);
+        wallMaterial.specularTexture = new Texture("assets/textures/tilen.png", this._scene);
         wallMaterial.bumpTexture = new Texture("assets/textures/tile.png", this._scene);
         wallMaterial.bumpTexture.level = 0.3;
         wallMaterial.diffuseTexture = wallTexture;
@@ -56,15 +56,12 @@ export class Environment {
         // groundMaterial.emissiveTexture = groundTexture;
 
         // load maze
-        /*
+        // /*
         let mazeMeshes: AbstractMesh[];
-        SceneLoader.ImportMesh("", "assets/models/", "NarrowMaze1.glb", this._scene, (meshes) => {
+        SceneLoader.ImportMesh("", "assets/models/", "Maze1.glb", this._scene, (meshes) => {
             meshes[0].name = "Maze";
             meshes[0].setParent(parent);
-            // meshes[0].position.y = 0.3;
-            // meshes[0].scaling = new Vector3(1, 0.5, 1);
-            // meshes[0].rotation = new Vector3(0, Math.PI / 2, 0);
-            // meshes[0].rotation = new Vector3(0, 0, 0);
+            meshes[0].rotation.y += Math.PI / 2;
 
             mazeMeshes = meshes[0].getChildMeshes();
 
@@ -75,10 +72,10 @@ export class Environment {
                 }
             });
         });
-       */
+       // */
 
         this._createSky(parent);
-        this._createLights(parent);
+        this._createLights(parent); // and shadows
 
         // create gravity
         this._scene.gravity = new Vector3(0, -9.81, 0);
@@ -86,9 +83,9 @@ export class Environment {
         // enable collisions
         this._scene.collisionsEnabled = true;
 
-        let ground: Mesh = MeshBuilder.CreateGround("ground", { width: 180, height: 240 }, this._scene);
+        let ground: Mesh = MeshBuilder.CreateGround("ground", { width: 180, height: 180 }, this._scene);
         ground.setParent(parent);
-        ground.position.set(-40, 0.04, 40);
+        ground.position.set(40, 0.04, -50);
         ground.rotation.y = -45;
         ground.material = groundMaterial;
 
@@ -100,7 +97,7 @@ export class Environment {
         // create sky material
         let skyboxMat: StandardMaterial = new StandardMaterial("skybox", this._scene);
         skyboxMat.backFaceCulling = false;
-        skyboxMat.reflectionTexture = new CubeTexture("assets/textures/SKyboxes/BlueSky", this._scene);
+        skyboxMat.reflectionTexture = new CubeTexture("assets/textures/Skyboxes/BlueSky", this._scene);
         skyboxMat.reflectionTexture.coordinatesMode = Texture.SKYBOX_MODE;
         skyboxMat.disableLighting = true;
 
@@ -135,6 +132,7 @@ export class Environment {
         let directionalLight: DirectionalLight = new DirectionalLight("sunlight", new Vector3(-5, -20, 90), this._scene);
         directionalLight.parent = parent;
         directionalLight.intensity = 1.6;
+
     }
 
     public testing(scene: Scene) : void {
