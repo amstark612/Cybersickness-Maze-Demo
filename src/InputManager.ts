@@ -53,9 +53,9 @@ export class InputManager extends Observable<WebXRControllerComponent> {
         }
     }
 
-    // private _onRightB(component?: WebXRControllerComponent) : void {
-    //     if (component?.changes.pressed) {
-    //         this.notifyObservers(component);
-    //     }
-    // }
+    private _onRightB(component?: WebXRControllerComponent) : void {
+        // if (component?.changes.pressed) {
+        //     this.notifyObservers(component);
+        // }
+    }
 }

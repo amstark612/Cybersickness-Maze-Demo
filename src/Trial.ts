@@ -30,10 +30,6 @@ export class Trial extends Observable<{ timestamp: number }> {
         SceneLoader.ImportMesh("", "assets/models/", "Trial" + trialNumber.toString() + ".glb", scene, (meshes) => {
             meshes[0].name = "Coins";
 
-            // meshes[0].rotation.y += Math.PI / 2;
-            // raise coins off ground 
-            meshes[0].position.y += 0.2;
-
             // get actual coins
             coinMeshes = meshes[0].getChildMeshes();
             this._totalCoinsInMaze = coinMeshes.length - 1; // b/c first coin is not collectable
@@ -43,9 +39,6 @@ export class Trial extends Observable<{ timestamp: number }> {
 
             // do not include first coin - first coin is just placemarker for starting position
             for (let index: number = 1; index < coinMeshes.length; index++) {
-                // scale coins here b/c too lazy to change them in Unity
-                // coinMeshes[index].scaling = new Vector3(0.7, 0.3, 0.7);
-
                 // enable collisions so user can collect coins
                 coinMeshes[index].checkCollisions = true;
 
@@ -82,14 +75,13 @@ export class Trial extends Observable<{ timestamp: number }> {
             // even though we will be setting player position to this._lastPosition instead of actual coin's position?
             // this is really really really dumb??????
             // find better sol later?
-            coinMeshes[0].position.y = 0.45;
+            coinMeshes[0].position.y = 0.6;
 
             // get first coin's position & rotation
             this._lastPosition = coinMeshes[0].getAbsolutePosition();
             this._lastAngle = coinMeshes[0].absoluteRotationQuaternion.toEulerAngles().y;
 
             // put player in starting position & rotation
-            // this.lastPosition.y = 1.6;
             player.position = this._lastPosition;
 
             // get user's y-rotation
