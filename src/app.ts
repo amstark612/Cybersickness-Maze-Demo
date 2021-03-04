@@ -24,6 +24,9 @@ export class App {
     private _dataCollector: DataCollectionManager;
     private _collecting: boolean = false;
 
+    // debug stuff
+    private _lastTimestamp: number = Date.now();
+
     // general app stuff
     private _scene: Scene;
     private _canvas: HTMLCanvasElement;
@@ -114,6 +117,20 @@ export class App {
         if (this._collecting) {
             // this._dataCollector.logFrameInfo(Date.now(), this._trialNumber, this._playerController.velocity, this._state);
         }
+
+        this._updateFPS();
+    }
+
+    private _updateFPS() : void {
+      if (this._playerController.xrSessionManager) {
+        let sessionManager = this._playerController.xrSessionManager;
+        let current: number = sessionManager.currentTimestamp;
+        // delta = milliseconds per frame
+        let delta: number = current - this._lastTimestamp;
+        this._lastTimestamp = current;
+
+        this._mainUI.updateDebugUI(1000.0 / delta);
+      }
     }
 
     // executed when notified by input manager

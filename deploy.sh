@@ -2,7 +2,7 @@
 
 USER="nguy4477"
 MACHINE="atlas.cselabs.umn.edu"
-DIRECTORY=".www/MazeDemo3/"
+DIRECTORY=".www/Debug/"
 
 # uncomment these lines if you add assets to the project
 rm -rfv dist/assets # force delete everything in dist/assets
