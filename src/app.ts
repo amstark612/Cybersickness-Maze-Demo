@@ -15,7 +15,7 @@ import "@babylonjs/core/Debug/debugLayer";
 import "@babylonjs/inspector";
 
 enum State { START = 0, PAUSED = 1, MAIN = 2, POSTTEST = 3 }
-enum UIMask { CHANGE_GAMESTATE = 1, LOG_DATA = 2, SET_HANDEDNESS = 3, FIND_MY_WAY = 4 }
+enum UIMask { CHANGE_GAMESTATE = 1, LOG_DATA = 2, SET_HANDEDNESS = 3, BEGIN_EXPERIMENT = 4, FIND_MY_WAY = 5 }
 
 export class App {
     private static readonly TOTAL_NUM_TRIALS = 2;
@@ -40,7 +40,7 @@ export class App {
     private _environment: Environment;
     private _mainUI: UI = null;
     private _trial: Trial;
-    private _trialNumber: number = 0;  // -1: collect baseline data, 0: stop collecting, 1: first trial
+    private _trialNumber: number = 0;
 
     // player stuff
     private _inputManager: InputManager = null;
@@ -93,6 +93,7 @@ export class App {
             case State.PAUSED:
                 // how to get rid of this ugly special case?
                 if (this._state == State.START) {
+                    // load tutorial instead
                     this._goToGame();
                 }
                 this._playerController.enableLocomotion = false;
@@ -172,6 +173,11 @@ export class App {
                 break;
             case UIMask.SET_HANDEDNESS:
                 this._inputManager.setPrimaryController(data);
+                // start tutorial instead
+                // this._beginTutorial();
+                this._startNewTrial();
+                break;
+            case UIMask.BEGIN_EXPERIMENT:
                 this._startNewTrial();
                 break;
             case UIMask.FIND_MY_WAY:
@@ -323,7 +329,7 @@ export class App {
                 this._collecting = true;    // start collecting baseline data
                 await new Promise(resolve => setTimeout(resolve, 2000));
                 poster.dispose();
-                this._collecting = false;    // stop collecting baseline data
+                this._collecting = false;   // stop collecting baseline data
 
                 // then get handedness
                 this._mainUI.createHandednessPrompt(this._scene);
@@ -334,6 +340,11 @@ export class App {
         // this._environment.testing(this._scene);
 
         this._scene.debugLayer.show();
+    }
+
+    private _loadTutorial() : void {
+        // have environment? load coins? who is going to load coins???
+        // they have to notify app, which then has to process that notification and call createTutorialPopup() in Ui
     }
 
     private async _goToEnd() : Promise<void> {
