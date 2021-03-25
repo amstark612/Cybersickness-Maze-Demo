@@ -3,13 +3,14 @@ import { AdvancedDynamicTexture } from "@babylonjs/gui/2D";
 import { Button, Control, Grid, Image, RadioButton, Rectangle, Slider, StackPanel, TextBlock } from "@babylonjs/gui/2D/controls";
 
 enum State { START = 0, PAUSED = 1, MAIN = 2, POSTTEST = 3 }
-enum UIMask { CHANGE_GAMESTATE = 1, LOG_DATA = 2, SET_HANDEDNESS = 3, FIND_MY_WAY = 4 }
+enum UIMask { CHANGE_GAMESTATE = 1, LOG_DATA = 2, SET_HANDEDNESS = 3, BEGIN_EXPERIMENT = 4, FIND_MY_WAY = 5 }
 
 export class UI extends Observable<{ mask: number, data?: any }> {
     // menus
     private _2Dmenu: AdvancedDynamicTexture;
     public pauseMenu: Mesh;
     public DSpopup: Mesh;
+    public tutorialPopup: Mesh;
 
     // debug stuff
     private _fpsDisplay: TextBlock;
@@ -186,7 +187,7 @@ export class UI extends Observable<{ mask: number, data?: any }> {
         background.alpha = 0.75;
 
         // create prompt
-        const text: TextBlock = this._createMsg("Please remain still and look at this picture for the next 60 seconds. The picture will automatically disappear after 60 seconds.", true, 700, 400);
+        const text: TextBlock = this._createMsg("Please remain still and look at this picture for the next 60 seconds. The picture will automatically disappear after 60 seconds and the tutorial will begin.", true, 700, 400);
         text.fontSize = 42;
 
         // load puppy pic!
@@ -354,5 +355,30 @@ export class UI extends Observable<{ mask: number, data?: any }> {
         grid.addControl(leftHeader, 0, 0);
         grid.addControl(rightHeader, 0, 1);
         stackPanel.addControl(submitBtn);
+    }
+
+    public createTutorialPopup(collider: Mesh, scene: Scene) : void {
+        const plane: Mesh = MeshBuilder.CreatePlane("Tutorial popup", { width: 1.5, height: 1 }, scene);
+        plane.position.set(0.2, 1.6, 0);
+        plane.isVisible = true;
+
+        // do this so it shows up right in 3D. don't ask me why because I don't know. DON'T AT ME.
+        const planeADT: AdvancedDynamicTexture = AdvancedDynamicTexture.CreateForMesh(plane);
+
+        // create rectangle for white background
+        const background: Rectangle = new Rectangle("Tutorial popup background");
+        background.background = "white";
+        background.alpha = 0.75;
+        background.heightInPixels = 500;
+        background.width = 0.75;
+
+        const text: TextBlock = this._createMsg("You have now completed the tutorial. The first trial will begin in...?", true, 500, 200);
+
+        planeADT.addControl(background);
+        background.addControl(text);
+
+        // put a timeout here
+        planeADT.dispose();
+        this.notifyObservers({ mask: UIMask.BEGIN_EXPERIMENT });
     }
 }
