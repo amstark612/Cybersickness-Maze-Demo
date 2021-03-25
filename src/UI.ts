@@ -12,8 +12,7 @@ export class UI extends Observable<{ mask: number, data?: any }> {
     public DSpopup: Mesh;
 
     // debug stuff
-    private _fpsDisplay: Mesh;
-    private _fps: number = 0;
+    private _fpsDisplay: TextBlock;
 
     // discomfort score stuff
     private static readonly DS_MIN: number = 0;
@@ -201,28 +200,30 @@ export class UI extends Observable<{ mask: number, data?: any }> {
         return plane;
     }
 
-    private _createDebugUI(parent: Mesh, scene: Scene) : Mesh {
-      const plane: Mesh = MeshBuilder.CreatePlane("FPS display", { width: 0.3, height: 0.3 }, scene);
+    private _createDebugUI(parent: Mesh, scene: Scene) : TextBlock {
+      const plane: Mesh = MeshBuilder.CreatePlane("FPS display", { width: 0.5, height: 0.5 }, scene);
+      plane.position.set(parent.position.x - 0.25, parent.position.y + 0.25, parent.position.z + 1);
+      plane.setParent(parent);
 
       const planeADT: AdvancedDynamicTexture = AdvancedDynamicTexture.CreateForMesh(plane);
 
       const background: Rectangle = new Rectangle();
-      background.widthInPixels = 400;
-      background.heightInPixels = 200;
+      background.widthInPixels = 300;
+      background.heightInPixels = 300;
       background.background = "white";
       background.alpha = 0.75;
 
-      const text: TextBlock = this._createMsg(String(this._fps) + " fps", true, 400, 200);
-      text.fontSize = 42;
+      const text: TextBlock = this._createMsg(String(0) + " fps", true, 500, 400);
+      text.fontSize = 72;
 
       planeADT.addControl(background);
       background.addControl(text);
 
-      return plane;
+      return text;
     }
 
     public updateDebugUI(fps: number) {
-
+      this._fpsDisplay.text = (fps).toFixed(2);
     }
 
     private _createDSPrompt(parent: Mesh, scene: Scene) : Mesh {
