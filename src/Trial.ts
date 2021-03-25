@@ -5,6 +5,11 @@ import { Color3, Quaternion, Vector3 } from "@babylonjs/core/Maths";
 import { ActionManager, ExecuteCodeAction } from "@babylonjs/core/Actions";
 import { Observable, Scene, SceneLoader } from "@babylonjs/core";
 
+// webxrcamera -> just get from webxrdefaultexperience
+// actionmanager
+// executecodeaction
+// observable
+
 // side effects
 import "@babylonjs/loaders/glTF/2.0/glTFLoader";
 

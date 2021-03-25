@@ -8,11 +8,17 @@ import { UI } from "./UI";
 import { PlayerController } from "./PlayerController";
 import { InputManager } from "./InputManager";
 import { Trial } from "./Trial";
-import { DataCollectionManager } from "./DataCollectionManager";
 
-// side effects
+import { IDataCollector } from "./IDataCollector";
+import { DataCollector } from "./DataCollector";
+
+import { Locator } from "./Locator";
+
+// side effects and debugging
 import "@babylonjs/core/Debug/debugLayer";
 import "@babylonjs/inspector";
+import { NullDataCollector } from "./NullDataCollector";
+import { TestDataCollector } from "./TestDataCollector";
 
 enum State { START = 0, PAUSED = 1, MAIN = 2, POSTTEST = 3 }
 enum UIMask { CHANGE_GAMESTATE = 1, LOG_DATA = 2, SET_HANDEDNESS = 3, BEGIN_EXPERIMENT = 4, FIND_MY_WAY = 5 }
@@ -21,7 +27,7 @@ export class App {
     private static readonly TOTAL_NUM_TRIALS = 2;
 
     // data collection stuff
-    private _dataCollector: DataCollectionManager;
+    private _dataCollector: IDataCollector = Locator.getDataCollector();
     private _collecting: boolean = false;
 
     // debug stuff
@@ -112,11 +118,22 @@ export class App {
         }
     }
 
+    private _enableDebugging() : void {
+        this._scene.debugLayer.show();
+        this._mainScene.debugLayer.show();
+
+        Locator.provide(new TestDataCollector(this._playerController?.xrCamera!, 
+                                              this._playerController?.xrSessionManager!,
+                                              new NullDataCollector()));
+
+        this._dataCollector = Locator.getDataCollector();
+    }
+
     private _update() : void {
         this._inputManager?.updateControllerInput();
 
         if (this._collecting) {
-            // this._dataCollector.logFrameInfo(Date.now(), this._trialNumber, this._playerController.velocity, this._state);
+            this._dataCollector.logFrameInfo(Date.now(), this._trialNumber, this._playerController.velocity, this._state);
         }
 
         this._updateFPS();
@@ -193,6 +210,7 @@ export class App {
 
     private _startNewTrial() : void {
         // create new trial
+        // this._trial = new Trial(this._playerController.xrCamera, this._playerController.collider, ++this._trialNumber, this._mainScene);
         this._trial = new Trial(this._playerController.xrCamera, this._playerController.collider, ++this._trialNumber, this._mainScene);
 
         this.changeGameState(State.MAIN);
@@ -316,7 +334,8 @@ export class App {
             this._mainUI.add(input => this._processUInotifications(input.mask, input.data!));
 
             // set up data collection manager           
-            this._dataCollector = new DataCollectionManager(this._playerController.xrCamera, sessionManager);
+            Locator.provide(new DataCollector(this._playerController.xrCamera, sessionManager));
+            this._dataCollector = Locator.getDataCollector();
         });
 
         sessionManager.onXRSessionInit.add(async() => {
@@ -339,7 +358,7 @@ export class App {
 
         // this._environment.testing(this._scene);
 
-        this._scene.debugLayer.show();
+        this._enableDebugging();
     }
 
     private _loadTutorial() : void {
