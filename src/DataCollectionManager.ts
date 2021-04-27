@@ -8,15 +8,18 @@ export class DataCollectionManager {
     private static readonly SERVER: string = "http://red.cse.umn.edu";
     // private static readonly EXP_ID: string = "Incidence of Cybersickness";
     private static readonly EXP_ID: string = "Christina-Testing";
-    private _participantID: string;
+    private _redID: string;
 
     private _trial: Trial;
     private _xrCamera: WebXRCamera;
     private _xrSessionManager: WebXRSessionManager;
 
-    constructor(xrCamera: WebXRCamera, xrSessionManager: WebXRSessionManager) {
-        this._participantID = JSON.stringify(RED.register_participant(DataCollectionManager.SERVER, DataCollectionManager.EXP_ID));
-        console.log(this._participantID);
+    constructor(xrCamera: WebXRCamera, xrSessionManager: WebXRSessionManager, userID: number) {
+        this._redID = JSON.stringify(RED.register_participant(DataCollectionManager.SERVER, DataCollectionManager.EXP_ID));
+        console.log("redID: " + this._redID);
+        
+        // log userID with server so redID and userID associated
+        RED.add_data(DataCollectionManager.SERVER, DataCollectionManager.EXP_ID, this._redID, "Participant ID", [{ "Participant ID": String(userID) }]);
 
         this._xrCamera = xrCamera;
         this._xrSessionManager = xrSessionManager;
@@ -25,13 +28,13 @@ export class DataCollectionManager {
     public registerNewTrial(trial: Trial) : void {
         this._trial = trial;
         this._trial.add( data => { this._logCoinPickup(data.timestamp) }, 1);
-        console.log(this._participantID);
+        console.log(this._redID);
     }
 
     public logFrameInfo(timestamp: number, trialNumber: number, speed: number, state: number) : void {
         let physical: XRRigidTransform = this._xrSessionManager.currentFrame.getViewerPose(this._xrSessionManager.baseReferenceSpace).transform;
 
-        RED.add_data(DataCollectionManager.SERVER, DataCollectionManager.EXP_ID, this._participantID, "Frame", [{
+        RED.add_data(DataCollectionManager.SERVER, DataCollectionManager.EXP_ID, this._redID, "Frame", [{
             "Timestamp": String(timestamp),
             "Trial number": String(trialNumber),
             "Speed": String(speed),
@@ -68,7 +71,7 @@ export class DataCollectionManager {
     }
 
     public logTrialInfo(trialNumber: number, discomfortScore: number) : void {
-        RED.add_data(DataCollectionManager.SERVER, DataCollectionManager.EXP_ID, this._participantID, "Trial", [{
+        RED.add_data(DataCollectionManager.SERVER, DataCollectionManager.EXP_ID, this._redID, "Trial", [{
             "Trial number": String(trialNumber),
             "Discomfort score": String(discomfortScore),
             "Total coins": String(this._trial.totalCoinsInMaze),
@@ -84,11 +87,11 @@ export class DataCollectionManager {
     }
 
     private _logCoinPickup(timestamp: number) : void {
-        RED.add_data(DataCollectionManager.SERVER, DataCollectionManager.EXP_ID, this._participantID, "Coin-pickups", [{ "Timestamp": String(timestamp) }]);
+        RED.add_data(DataCollectionManager.SERVER, DataCollectionManager.EXP_ID, this._redID, "Coin-pickups", [{ "Timestamp": String(timestamp) }]);
         
 //        console.log("Timestamp of coin pickup: " + " " + timestamp);
     }
     public quitDataCollection() : void {
-        RED.finish_participant(DataCollectionManager.SERVER, DataCollectionManager.EXP_ID, this._participantID);
+        RED.finish_participant(DataCollectionManager.SERVER, DataCollectionManager.EXP_ID, this._redID);
     }
 }

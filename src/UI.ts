@@ -1,16 +1,19 @@
 import { Mesh, MeshBuilder, Observable, Scene } from "@babylonjs/core";
-import { AdvancedDynamicTexture } from "@babylonjs/gui/2D";
+import { AdvancedDynamicTexture, InputText, VirtualKeyboard } from "@babylonjs/gui/2D";
 import { Button, Control, Grid, Image, RadioButton, Rectangle, Slider, StackPanel, TextBlock } from "@babylonjs/gui/2D/controls";
 
 enum State { START = 0, PAUSED = 1, MAIN = 2, POSTTEST = 3 }
-enum UIMask { CHANGE_GAMESTATE = 1, LOG_DATA = 2, SET_HANDEDNESS = 3, BEGIN_EXPERIMENT = 4, FIND_MY_WAY = 5 }
+enum UIMask { CHANGE_GAMESTATE = 1, LOG_DATA = 2, USER_ID = 3, SET_HANDEDNESS = 4, BEGIN_EXPERIMENT = 5, FIND_MY_WAY = 6 }
 
 export class UI extends Observable<{ mask: number, data?: any }> {
     // menus
     private _2Dmenu: AdvancedDynamicTexture;
     public pauseMenu: Mesh;
     public DSpopup: Mesh;
-    public tutorialPopup: Mesh;
+
+    // spaghetti code for tutorial plz, plz, plz stop judging
+    private _tutorialFinished: boolean = false;
+    private _tutorialPopup: Mesh;
 
     // debug stuff
     private _fpsDisplay: TextBlock;
@@ -20,7 +23,7 @@ export class UI extends Observable<{ mask: number, data?: any }> {
     private static readonly DS_MAX: number = 10;
     private static readonly DS_PROMPT: string = "Discomfort score prompt goes here more words and stuff to fill text block does this text wrap properly? What are the margins? Is the text squashed vertically? WHAT IS LIFE";
 
-    private static readonly PRETEST_PROMPT: string = "Some instructions and stuff";
+    private static readonly PRETEST_PROMPT: string = "Please enter your 289234-digit something-something-ID in the white box below. A keyboard will pop up once you've clicked in it. Once you've entered your ID, press the return key on the bottom right of the keyboard to begin.";
     private static readonly POSTTEST_PROMPT: string = "Instructions for uploading data or whatever needs to happen after demo";
 
     // font
@@ -37,6 +40,7 @@ export class UI extends Observable<{ mask: number, data?: any }> {
         }
         else {
             this.DSpopup = this._createDSPrompt(collider, scene);
+            this._tutorialPopup = this._createTutorialPopup(collider, scene);
             this.pauseMenu = this._createPauseMenu(collider, scene);
             this._fpsDisplay = this._createDebugUI(collider, scene);
         }
@@ -79,7 +83,56 @@ export class UI extends Observable<{ mask: number, data?: any }> {
 
     public createStartScreen(scene: Scene) : void {
         const text: TextBlock = this._createMsg(UI.PRETEST_PROMPT, false);
+        text.height = "400px";
+        text.width = "700px";
+        text.verticalAlignment = Control.VERTICAL_ALIGNMENT_TOP;
+
+        const input: InputText = new InputText("Input field", "Please enter your 5-digit ID");
+        input.width = "400px";
+        input.height = "40px";
+        input.color = "white";
+        input.background = "gray";
+
+        const keyboard: VirtualKeyboard  = new VirtualKeyboard();
+        keyboard.fontSize = "45opx";
+        keyboard.addKeysRow([ "1", "2", "3" ], 
+                            [{ width: "60px", height: "60px" }, 
+                             { width: "60px", height: "60px" }, 
+                             { width: "60px", height: "60px" }]);
+        keyboard.addKeysRow([ "4", "5", "6" ],
+                            [{ width: "60px", height: "60px" }, 
+                             { width: "60px", height: "60px" }, 
+                             { width: "60px", height: "60px" }]);
+        keyboard.addKeysRow([ "7", "8", "9" ],
+                            [{ width: "60px", height: "60px" }, 
+                             { width: "60px", height: "60px" }, 
+                             { width: "60px", height: "60px" }]);
+        keyboard.addKeysRow([ "\u2190", "0", "\u21b5" ],
+                            [{ width: "60px", height: "60px" }, 
+                             { width: "60px", height: "60px" }, 
+                             { width: "60px", height: "60px" }]);
+        keyboard.verticalAlignment = Control.VERTICAL_ALIGNMENT_BOTTOM;
+        
         const btn: Button = this._createBtn("BEGIN", false);
+
+        keyboard.connect(input);
+
+        input.onFocusObservable.add(() => {
+          input.text = "";
+        });
+
+        keyboard.onKeyPressObservable.add((key) => {
+          if (key == "\u21b5") {
+            // validate input
+            if (input.text.length < 5) {
+              input.text = "ID must be at least 5 digits";
+            }
+            else {
+              this.notifyObservers({ mask: UIMask.USER_ID, data: input.text });
+              scene.detachControl();
+            }
+          }
+        });
 
         btn.onPointerDownObservable.add(() => {
             this.notifyObservers({ mask: UIMask.CHANGE_GAMESTATE, data: State.PAUSED });
@@ -87,7 +140,9 @@ export class UI extends Observable<{ mask: number, data?: any }> {
         })
 
         this._2Dmenu.addControl(text);
-        this._2Dmenu.addControl(btn);
+        this._2Dmenu.addControl(input);
+        this._2Dmenu.addControl(keyboard);
+        //this._2Dmenu.addControl(btn);
     }
 
     public createEndScreen() : void {
@@ -280,8 +335,16 @@ export class UI extends Observable<{ mask: number, data?: any }> {
         });
 
         submitBtn.onPointerDownObservable.add(() => {
-            this.notifyObservers({ mask: UIMask.LOG_DATA, data: rating });
-            rating = UI.DS_MAX / 2;     // reset rating to 10 for next time
+            // this is spaghetti code to add tutorial. it ugly. leave me alone.
+            if (this._tutorialFinished == true) {
+              this.notifyObservers({ mask: UIMask.LOG_DATA, data: rating });
+              rating = UI.DS_MAX / 2;     // reset rating to 10 for next time
+            }
+            else {
+              this._tutorialFinished = true;
+              this._tutorialPopup.isVisible = true;
+            }
+
             plane.isVisible = false;
         });
 
@@ -357,28 +420,39 @@ export class UI extends Observable<{ mask: number, data?: any }> {
         stackPanel.addControl(submitBtn);
     }
 
-    public createTutorialPopup(collider: Mesh, scene: Scene) : void {
+    private _createTutorialPopup(collider: Mesh, scene: Scene) : Mesh {
         const plane: Mesh = MeshBuilder.CreatePlane("Tutorial popup", { width: 1.5, height: 1 }, scene);
-        plane.position.set(0.2, 1.6, 0);
-        plane.isVisible = true;
+        plane.position.set(collider.position.x, collider.position.y, collider.position.z + 1.2);
+        plane.setParent(collider);
+        plane.isVisible = false;
 
         // do this so it shows up right in 3D. don't ask me why because I don't know. DON'T AT ME.
         const planeADT: AdvancedDynamicTexture = AdvancedDynamicTexture.CreateForMesh(plane);
 
-        // create rectangle for white background
-        const background: Rectangle = new Rectangle("Tutorial popup background");
-        background.background = "white";
-        background.alpha = 0.75;
-        background.heightInPixels = 500;
-        background.width = 0.75;
+        const text: TextBlock = this._createMsg("You have now completed the tutorial. Please press the button below to begin the first trial.", true, 500, 200);
 
-        const text: TextBlock = this._createMsg("You have now completed the tutorial. The first trial will begin in...?", true, 500, 200);
+        // create buttons
+        const btn: Button = this._createBtn("Begin", true);
 
-        planeADT.addControl(background);
-        background.addControl(text);
+        // make button do stuff
+        btn.onPointerDownObservable.add(() => {
+            planeADT.dispose();
+            this.notifyObservers({ mask: UIMask.BEGIN_EXPERIMENT });
+        });
+        
+        // grid for organization
+        const grid: Grid = this._createGrid("Tutorial popup grid", 600, 660, true);
+        grid.addRowDefinition(20, true);      // extra row for padding b/c .padding doesn't seem to work
+        grid.addRowDefinition(500, true);     // text
+        grid.addRowDefinition(20, true);      // extra row for padding b/c .padding doesn't seem to work
+        grid.addRowDefinition(100, true);     // begin button
+        grid.addRowDefinition(20, true);      // extra row for padding b/c .padding doesn't seem to work
 
-        // put a timeout here
-        planeADT.dispose();
-        this.notifyObservers({ mask: UIMask.BEGIN_EXPERIMENT });
+
+        planeADT.addControl(grid);
+        grid.addControl(text, 1, 0);
+        grid.addControl(btn, 3, 0);
+
+        return plane;
     }
 }

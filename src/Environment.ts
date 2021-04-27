@@ -14,61 +14,22 @@ export class Environment {
     public xrHelper: WebXRDefaultExperience;
 
     private _parent: TransformNode;            // empty node for organizing inspector
-    private _wallMaterial: StandardMaterial;
-    private _coinMaterial: StandardMaterial;
 
     constructor(scene: Scene) {
         this._scene = scene;
         this._parent = new TransformNode("Environment");
-        this._loadTextures();
-    }
-
-    private _loadTextures() : void {
-        let wallTexture: Texture = new Texture("assets/textures/tile.png", this._scene);
-        wallTexture.uScale = 11;
-        wallTexture.vScale = 10;
-        this._wallMaterial = new StandardMaterial("wall material", this._scene);
-        this._wallMaterial.specularTexture = new Texture("assets/textures/tilen.png", this._scene);
-        this._wallMaterial.bumpTexture = new Texture("assets/textures/tile.png", this._scene);
-        this._wallMaterial.bumpTexture.level = 0.3;
-        this._wallMaterial.diffuseTexture = wallTexture;
-
-        let coinTexture: Texture = new Texture("assets/textures/gold2.png", this._scene);
-        this._coinMaterial = new StandardMaterial("coin material", this._scene);
-        this._coinMaterial.bumpTexture = new Texture("assets/textures/gold2n.png", this._scene);
-        this._coinMaterial.specularPower = 100;
-        this._coinMaterial.diffuseTexture = coinTexture;
     }
 
     public async load() {
         this._createSky();
-        this._createLights(); // and shadows
+        this._createLights();
         this._createGround();
-        this._loadMaze(1);    // tutorial maze = maze 0
 
         // create gravity
         this._scene.gravity = new Vector3(0, -9.81, 0);
 
         // enable collisions
         this._scene.collisionsEnabled = true;
-    }
-
-    private _loadMaze(trialNumber: number) : void {
-        let mazeMeshes: AbstractMesh[];
-        SceneLoader.ImportMesh("", "assets/models/", "Maze" + trialNumber + ".glb", this._scene, (meshes) => {
-            meshes[0].name = "Maze";
-            meshes[0].setParent(this._parent);
-            meshes[0].rotation.y += Math.PI / 2;
-
-            mazeMeshes = meshes[0].getChildMeshes();
-
-            mazeMeshes.forEach(element => {
-                if (element.getClassName() == "Mesh") {
-                    element.checkCollisions = true;
-                    element.material = this._wallMaterial;
-                }
-            });
-        });
     }
 
     private _createGround() : void {
@@ -145,39 +106,5 @@ export class Environment {
         directionalLight.parent = this._parent;
         directionalLight.intensity = 1.6;
 
-    }
-
-    public testing(scene: Scene) : void {
-        // load texture
-        let coinTexture: Texture = new Texture("assets/textures/gold2.png", scene);
-        let coinMaterial: StandardMaterial = new StandardMaterial("coin", scene);
-        coinMaterial.bumpTexture = new Texture("assets/textures/gold2n.png", scene);
-        coinMaterial.specularPower = 100;
-        coinMaterial.diffuseTexture = coinTexture;
-                                                                                                                                                        
-        // import the mesh of coins
-        let coinMeshes: AbstractMesh[];
-        SceneLoader.ImportMesh("", "assets/models/", "Trial1.glb", scene, (meshes) => {
-            meshes[0].name = "Coins";
-            // meshes[0].scaling = new Vector3(1, 0.5, 1);
-            // meshes[0].rotation = new Vector3(0, Math.PI / 2, 0);
-            // meshes[0].rotation = new Vector3(0, 0, 0);
-            
-            // lower coins so short people don't get whacked in the face collecting them
-            // meshes[0].position.y -= -0.5;
-                                                                                                                                                        
-            // get actual coins
-            coinMeshes = meshes[0].getChildMeshes();
-                                                                                                                                                        
-            // apply coin texture to first coin (other coins will be instanced meshes of this one)
-            coinMeshes[0].material = coinMaterial;
-                                                                                                                                                        
-            // do not include first coin - first coin is just placemarker for starting position
-            for (let index: number = 1; index < coinMeshes.length; index++) {
-                // scale coins here b/c too lazy to change them in Unity
-                // coinMeshes[index].scaling = new Vector3(0.5, 0.03, 0.5);
-                                                                                                                                                        
-            }
-        });
     }
 }

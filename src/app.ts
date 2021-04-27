@@ -15,7 +15,7 @@ import "@babylonjs/core/Debug/debugLayer";
 import "@babylonjs/inspector";
 
 enum State { START = 0, PAUSED = 1, MAIN = 2, POSTTEST = 3 }
-enum UIMask { CHANGE_GAMESTATE = 1, LOG_DATA = 2, SET_HANDEDNESS = 3, BEGIN_EXPERIMENT = 4, FIND_MY_WAY = 5 }
+enum UIMask { CHANGE_GAMESTATE = 1, LOG_DATA = 2, USER_ID = 3, SET_HANDEDNESS = 4, BEGIN_EXPERIMENT = 5, FIND_MY_WAY = 6 }
 
 export class App {
     private static readonly TOTAL_NUM_TRIALS = 2;
@@ -39,8 +39,7 @@ export class App {
     // game state stuff
     private _environment: Environment;
     private _mainUI: UI = null;
-    private _trial: Trial;
-    private _trialNumber: number = 0;
+    private _trialManager: Trial;
 
     // player stuff
     private _inputManager: InputManager = null;
@@ -88,13 +87,13 @@ export class App {
     }
 
     // ugly solution for changing game state from UI class
-    public changeGameState(state: State | number) : void {
+    public changeGameState(state: State | number, userID?: number) : void {
         switch(state) {
             case State.PAUSED:
                 // how to get rid of this ugly special case?
                 if (this._state == State.START) {
                     // load tutorial instead
-                    this._goToGame();
+                    this._goToGame(userID);
                 }
                 this._playerController.enableLocomotion = false;
                 this._state = State.PAUSED;
@@ -116,7 +115,7 @@ export class App {
         this._inputManager?.updateControllerInput();
 
         if (this._collecting) {
-            // this._dataCollector.logFrameInfo(Date.now(), this._trialNumber, this._playerController.velocity, this._state);
+            // this._dataCollector.logFrameInfo(Date.now(), this._trialManager.trialNumber, this._playerController.velocity, this._state);
         }
 
         this._updateFPS();
@@ -156,10 +155,10 @@ export class App {
                 break;
             case UIMask.LOG_DATA:
                 // log discomfort score
-                this._dataCollector.logTrialInfo(this._trialNumber, data);
+                this._dataCollector.logTrialInfo(this._trialManager.trialNumber, data);
 
                 // end program if user is too sick or just completed final trial
-                if (data == 10 || this._trialNumber == App.TOTAL_NUM_TRIALS) {
+                if (data == 10 || this._trialManager.trialNumber == App.TOTAL_NUM_TRIALS) {
                     // end data collection
                     this._collecting = false;
                     this._dataCollector.quitDataCollection();
@@ -171,19 +170,22 @@ export class App {
                     this._startNewTrial();
                 }
                 break;
+            case UIMask.USER_ID:
+                this.changeGameState(State.PAUSED, data);
+                break;
             case UIMask.SET_HANDEDNESS:
                 this._inputManager.setPrimaryController(data);
                 // start tutorial instead
-                // this._beginTutorial();
-                this._startNewTrial();
+                // this._startNewTrial();
+                this._trialManager.loadTutorial(this._playerController.xrCamera, this._playerController.collider);
+                this.changeGameState(State.MAIN);
                 break;
             case UIMask.BEGIN_EXPERIMENT:
                 this._startNewTrial();
                 break;
             case UIMask.FIND_MY_WAY:
-                // console.log("from app globalposition: " + this._trial.lastPosition + ", angle: " + this._trial.lastAngle);
-                this._playerController.setOrientation(this._trial.lastAngle);
-                this._playerController.setPosition(this._trial.lastPosition);
+                this._playerController.setOrientation(this._trialManager.lastAngle);
+                this._playerController.setPosition(this._trialManager.lastPosition);
                 this.changeGameState(State.MAIN);
                 break;
             default:
@@ -192,25 +194,12 @@ export class App {
     }
 
     private _startNewTrial() : void {
-        // create new trial
-        this._trial = new Trial(this._playerController.xrCamera, this._playerController.collider, ++this._trialNumber, this._mainScene);
+        this._trialManager.newTrial(this._playerController.xrCamera, this._playerController.collider);
 
         this.changeGameState(State.MAIN);
 
         // start collecting data
         this._collecting = true;
-
-        // make sure data collector has everything it needs
-        this._dataCollector.registerNewTrial(this._trial);
-        // this._dataCollector.registerPlayer(this._playerController.xrCamera, this._playerController.xrSessionManager);
-        
-        // trial will only notify app upon user collecting final coin:
-       this._trial.add(() => {
-                this.changeGameState(State.PAUSED);
-                this._mainUI.DSpopup.isVisible = true;
-            },
-            2
-        ); 
     }
 
     private async _setUpMainScene() : Promise<void> {
@@ -274,7 +263,7 @@ export class App {
         // create fullscreen UI for GUI elements
         const guiMenu: UI = new UI("UI", false);
         // subscribe to UI notifications 
-        guiMenu.add(input => this.changeGameState(input.data));
+        guiMenu.add(input => this._processUInotifications(input.mask, input.data));
 
         await this._setUpMainScene().then(() => {
                 guiMenu.createStartScreen(this._scene);
@@ -288,7 +277,10 @@ export class App {
         this._state = State.START;
     }
 
-    private async _goToGame() : Promise<void> {
+    private async _goToGame(userID: number) : Promise<void> {
+        //display loading screen while loading meshes
+        this._engine.displayLoadingUI();
+
         // get rid of start scene and switch to game scene
         this._scene.detachControl();
         this._scene.dispose();
@@ -302,10 +294,6 @@ export class App {
         await this._playerController.loadXR().then(async() => {
             this._playerController.xrHelper.input.onControllerAddedObservable.add(inputSource => {
                 this._setUpXR(inputSource);
-
-                // hide loading screen and reattach control now that scene is ready
-                this._engine.hideLoadingUI();
-                this._scene.attachControl();
             });
 
             sessionManager = this._playerController.xrHelper.baseExperience.sessionManager;
@@ -315,12 +303,30 @@ export class App {
             // subscribe to UI notifications for pausing/unpausing game during popups & getting handedness
             this._mainUI.add(input => this._processUInotifications(input.mask, input.data!));
 
-            // set up data collection manager           
-            this._dataCollector = new DataCollectionManager(this._playerController.xrCamera, sessionManager);
+            // set up data collection & trial manager           
+            this._trialManager = new Trial(this._mainScene);
+            this._dataCollector = new DataCollectionManager(this._playerController.xrCamera, sessionManager, userID);
+
+        });
+
+        // make sure data collector has everything it needs
+        this._dataCollector.registerNewTrial(this._trialManager);
+        
+        // trial will only notify app upon user collecting final coin:
+        this._trialManager.add(() => {
+                this.changeGameState(State.PAUSED);
+                this._mainUI.DSpopup.isVisible = true;
+            },
+            2
+        ); 
+
+        await this._trialManager.loadMaze("TutorialMaze").then(async() => {
+            // hide loading screen and reattach control now that scene is ready
+            this._engine.hideLoadingUI();
+            this._scene.attachControl();
         });
 
         sessionManager.onXRSessionInit.add(async() => {
-            /* handedness bypass for dev purposes - delete coin models from environment.ts later */
             await new Promise(resolve => setTimeout(resolve, 2000));    // wait for frame to load before executing the rest
 
             if (sessionManager.currentFrame) {
@@ -334,17 +340,9 @@ export class App {
                 // then get handedness
                 this._mainUI.createHandednessPrompt(this._scene);
             }
-            // */
         });
 
-        // this._environment.testing(this._scene);
-
         this._scene.debugLayer.show();
-    }
-
-    private _loadTutorial() : void {
-        // have environment? load coins? who is going to load coins???
-        // they have to notify app, which then has to process that notification and call createTutorialPopup() in Ui
     }
 
     private async _goToEnd() : Promise<void> {
