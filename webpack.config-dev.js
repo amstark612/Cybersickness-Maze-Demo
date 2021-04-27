@@ -23,7 +23,7 @@ module.exports = merge(common, {
         useLocalIp: true,
         host: '0.0.0.0',
 
-        // https: true // enable when HTTPS is needed (like in WebXR)
+        https: true // enable when HTTPS is needed (like in WebXR)
 
     }    
 });
